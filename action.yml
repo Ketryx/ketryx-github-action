@@ -2,7 +2,7 @@ name: 'Ketryx'
 description: 'Send build results to Ketryx'
 author: 'Ketryx'
 inputs:
-  ketryxUrl:
+  ketryx-url:
     required: false
     description: 'Ketryx server URL'
     default: 'https://app.ketryx.com'
@@ -12,19 +12,19 @@ inputs:
   version:
     required: false
     description: 'Ketryx version ID (if not set, the build will be associated with a version based on the commit SHA)'
-  commitSha:
+  commit-sha:
     required: false
     description: 'Commit SHA (if not set, will use the environment variable GITHUB_SHA provided by GitHub Actions)'
-  apiKey:
+  api-key:
     required: true
     description: 'Ketryx API key'
-  buildName:
+  build-name:
     required: false
     description: 'Build name to disambiguate several parallel builds'
   log:
     required: false
     description: 'Log output to store with the build'
-  testCucumberPath:
+  test-cucumber-path:
     required: false
     description: 'Path of a Cucumber JSON file containing test results'
 runs:
