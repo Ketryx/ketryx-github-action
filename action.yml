@@ -24,9 +24,15 @@ inputs:
   log:
     required: false
     description: 'Log output to store with the build'
+  artifacts-path:
+    required: false
+    description: 'Paths (newline-separated glob patterns) of build artifact files'
   test-cucumber-path:
     required: false
-    description: 'Path of a Cucumber JSON file containing test results'
+    description: 'Paths (newline-separated glob patterns) of Cucumber JSON files containing test results'
+  test-junit-path:
+    required: false
+    description: 'Paths (newline-separated glob patterns) of JUnit XML files containing test results'
 runs:
   using: 'node16'
   main: 'dist/index.js'
