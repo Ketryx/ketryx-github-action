@@ -24,7 +24,7 @@ inputs:
   log:
     required: false
     description: 'Log output to store with the build'
-  artifacts-path:
+  artifact-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of build artifact files'
   test-cucumber-path:
