@@ -1,4 +1,5 @@
 import * as core from '@actions/core';
+import glob from 'glob-promise';
 import { readActionInput } from './input';
 import { ArtifactData, uploadBuild, uploadBuildArtifact } from './upload';
 
@@ -10,9 +11,31 @@ async function run(): Promise<void> {
     core.debug(`Input: ${JSON.stringify(input)}`);
 
     const artifacts: ArtifactData[] = [];
-    if (input.testCucumberPath) {
-      const fileId = await uploadBuildArtifact(input, input.testCucumberPath);
-      artifacts.push({ id: fileId, type: 'cucumber-json' });
+    for (const pattern of input.artifactPath) {
+      for (const filePath of await glob(pattern)) {
+        const fileId = await uploadBuildArtifact(
+          input,
+          filePath,
+          'application/octet-stream'
+        );
+        artifacts.push({ id: fileId, type: 'artifact' });
+      }
+    }
+    for (const pattern of input.testCucumberPath) {
+      for (const filePath of await glob(pattern)) {
+        const fileId = await uploadBuildArtifact(input, filePath);
+        artifacts.push({ id: fileId, type: 'cucumber-json' });
+      }
+    }
+    for (const pattern of input.testJunitPath) {
+      for (const filePath of await glob(pattern)) {
+        const fileId = await uploadBuildArtifact(
+          input,
+          filePath,
+          'application/xml'
+        );
+        artifacts.push({ id: fileId, type: 'junit-xml' });
+      }
     }
 
     const buildData = await uploadBuild(input, artifacts);

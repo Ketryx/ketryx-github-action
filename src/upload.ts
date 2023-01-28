@@ -4,7 +4,10 @@ import * as core from '@actions/core';
 import type { ActionInput } from './input';
 import { hasProperty } from './util';
 
-export type ArtifactData = { id: string; type: 'artifact' | 'cucumber-json' };
+export type ArtifactData = {
+  id: string;
+  type: 'artifact' | 'cucumber-json' | 'junit-xml';
+};
 
 type BuildApiInputData = {
   project: string;

@@ -8,7 +8,9 @@ export type ActionInput = {
   commitSha?: string;
   buildName?: string;
   log?: string;
-  testCucumberPath?: string;
+  artifactPath: string[];
+  testCucumberPath: string[];
+  testJunitPath: string[];
 };
 
 export function readActionInput(): ActionInput {
@@ -28,7 +30,9 @@ export function readActionInput(): ActionInput {
   const commitSha = core.getInput('commit-sha') || process.env.GITHUB_SHA;
   const buildName = core.getInput('build-name');
 
-  const testCucumberPath = core.getInput('test-cucumber-path');
+  const artifactPath = core.getMultilineInput('artifact-path');
+  const testCucumberPath = core.getMultilineInput('test-cucumber-path');
+  const testJunitPath = core.getMultilineInput('test-junit-path');
 
   const log = core.getInput('log');
 
@@ -39,7 +43,9 @@ export function readActionInput(): ActionInput {
     commitSha,
     apiKey,
     log,
+    artifactPath,
     testCucumberPath,
+    testJunitPath,
     buildName,
   };
 }
