@@ -43,6 +43,9 @@ async function uploadBuildArtifact(
   const response = await fetch(urlString, {
     method: 'post',
     body: formData,
+    headers: {
+      authorization: `Bearer ${input.apiKey}`,
+    },
   });
 
   if (response.status !== 200) {
@@ -76,6 +79,7 @@ async function uploadBuild(
   const response = await fetch(urlString, {
     body: JSON.stringify(data),
     headers: {
+      authorization: `Bearer ${input.apiKey}`,
       'content-type': 'application/json',
     },
   });
