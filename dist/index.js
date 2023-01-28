@@ -29,19 +29,19 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.readActionInput = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 function readActionInput() {
-    const ketryxUrl = core.getInput('ketryxUrl') || 'https://app.ketryx.com';
+    const ketryxUrl = core.getInput('ketryx-url') || 'https://app.ketryx.com';
     const project = core.getInput('project');
     if (!project) {
         throw new Error('Missing input project');
     }
-    const apiKey = core.getInput('apiKey');
+    const apiKey = core.getInput('api-key');
     if (!apiKey) {
-        throw new Error('Missing input apiKey');
+        throw new Error('Missing input api-key');
     }
     const version = core.getInput('version');
-    const commitSha = core.getInput('commitSha') || process.env.GITHUB_SHA;
-    const buildName = core.getInput('buildName');
-    const testCucumberPath = core.getInput('testCucumberPath');
+    const commitSha = core.getInput('commit-sha') || process.env.GITHUB_SHA;
+    const buildName = core.getInput('build-name');
+    const testCucumberPath = core.getInput('test-cucumber-path');
     const log = core.getInput('log');
     return {
         ketryxUrl,
