@@ -94,71 +94,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const node_fetch_1 = __importStar(__nccwpck_require__(4429));
-const path = __importStar(__nccwpck_require__(9411));
 const input_1 = __nccwpck_require__(8657);
-function hasProperty(o, k) {
-    return typeof o === 'object' && k in o;
-}
-function uploadBuildArtifact(input, filePath, contentType = 'application/json') {
-    return __awaiter(this, void 0, void 0, function* () {
-        const url = new URL('/api/hooks/build-artifact', input.ketryxUrl);
-        url.searchParams.set('project', input.project);
-        const urlString = url.toString();
-        const formData = new node_fetch_1.FormData();
-        const file = yield (0, node_fetch_1.fileFrom)(filePath, contentType);
-        formData.set('file', file, path.basename(filePath));
-        core.debug(`Sending request to ${urlString}`);
-        const response = yield (0, node_fetch_1.default)(urlString, {
-            method: 'post',
-            body: formData,
-            headers: {
-                authorization: `Bearer ${input.apiKey}`,
-            },
-        });
-        if (response.status !== 200) {
-            throw new Error(`Error uploading build artifact to ${urlString}`);
-        }
-        const responseData = yield response.json();
-        if (hasProperty(responseData, 'id') && typeof responseData.id === 'string') {
-            return responseData.id;
-        }
-        throw new Error(`Unexpected response data from ${urlString}`);
-    });
-}
-function uploadBuild(input, artifacts) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const data = {
-            project: input.project,
-            version: input.version,
-            buildName: input.buildName,
-            commitSha: input.commitSha,
-            log: input.log,
-            artifacts,
-        };
-        const url = new URL('/api/hooks/build', input.ketryxUrl);
-        const urlString = url.toString();
-        core.debug(`Sending request to ${urlString}`);
-        const response = yield (0, node_fetch_1.default)(urlString, {
-            body: JSON.stringify(data),
-            headers: {
-                authorization: `Bearer ${input.apiKey}`,
-                'content-type': 'application/json',
-            },
-        });
-        if (response.status !== 200) {
-            return { ok: false };
-        }
-        const responseData = yield response.json();
-        const ok = hasProperty(responseData, 'ok') &&
-            typeof responseData.ok === 'boolean' &&
-            responseData.ok;
-        const id = hasProperty(responseData, 'id') && typeof responseData.id === 'string'
-            ? responseData.id
-            : null;
-        return { ok, id };
-    });
-}
+const upload_1 = __nccwpck_require__(4831);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -167,10 +104,10 @@ function run() {
             core.debug(`Input: ${JSON.stringify(input)}`);
             const artifacts = [];
             if (input.testCucumberPath) {
-                const fileId = yield uploadBuildArtifact(input, input.testCucumberPath);
+                const fileId = yield (0, upload_1.uploadBuildArtifact)(input, input.testCucumberPath);
                 artifacts.push({ id: fileId, type: 'cucumber-json' });
             }
-            const buildData = yield uploadBuild(input, artifacts);
+            const buildData = yield (0, upload_1.uploadBuild)(input, artifacts);
             if (buildData.ok) {
                 core.info(`Sent build data to Ketryx: ${buildData.id}`);
             }
@@ -188,6 +125,129 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 4831:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.uploadBuild = exports.uploadBuildArtifact = void 0;
+const node_fetch_1 = __importStar(__nccwpck_require__(4429));
+const node_path_1 = __importDefault(__nccwpck_require__(9411));
+const core = __importStar(__nccwpck_require__(2186));
+const util_1 = __nccwpck_require__(4024);
+function uploadBuildArtifact(input, filePath, contentType = 'application/json') {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = new URL('/api/hooks/build-artifact', input.ketryxUrl);
+        url.searchParams.set('project', input.project);
+        const urlString = url.toString();
+        const formData = new node_fetch_1.FormData();
+        const file = yield (0, node_fetch_1.fileFrom)(filePath, contentType);
+        formData.set('file', file, node_path_1.default.basename(filePath));
+        core.debug(`Sending request to ${urlString}`);
+        const response = yield (0, node_fetch_1.default)(urlString, {
+            method: 'post',
+            body: formData,
+            headers: {
+                authorization: `Bearer ${input.apiKey}`,
+            },
+        });
+        if (response.status !== 200) {
+            throw new Error(`Error uploading build artifact to ${urlString}`);
+        }
+        const responseData = yield response.json();
+        if ((0, util_1.hasProperty)(responseData, 'id') && typeof responseData.id === 'string') {
+            return responseData.id;
+        }
+        throw new Error(`Unexpected response data from ${urlString}`);
+    });
+}
+exports.uploadBuildArtifact = uploadBuildArtifact;
+function uploadBuild(input, artifacts) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const data = {
+            project: input.project,
+            version: input.version,
+            buildName: input.buildName,
+            commitSha: input.commitSha,
+            log: input.log,
+            artifacts,
+        };
+        const url = new URL('/api/hooks/build', input.ketryxUrl);
+        const urlString = url.toString();
+        core.debug(`Sending request to ${urlString}`);
+        const response = yield (0, node_fetch_1.default)(urlString, {
+            method: 'post',
+            body: JSON.stringify(data),
+            headers: {
+                authorization: `Bearer ${input.apiKey}`,
+                'content-type': 'application/json',
+            },
+        });
+        if (response.status !== 200) {
+            return { ok: false };
+        }
+        const responseData = yield response.json();
+        const ok = (0, util_1.hasProperty)(responseData, 'ok') &&
+            typeof responseData.ok === 'boolean' &&
+            responseData.ok;
+        const id = (0, util_1.hasProperty)(responseData, 'id') && typeof responseData.id === 'string'
+            ? responseData.id
+            : null;
+        return { ok, id };
+    });
+}
+exports.uploadBuild = uploadBuild;
+
+
+/***/ }),
+
+/***/ 4024:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.hasProperty = void 0;
+function hasProperty(o, k) {
+    return typeof o === 'object' && k in o;
+}
+exports.hasProperty = hasProperty;
 
 
 /***/ }),
