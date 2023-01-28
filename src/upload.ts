@@ -71,6 +71,7 @@ export async function uploadBuild(
 
   core.debug(`Sending request to ${urlString}`);
   const response = await fetch(urlString, {
+    method: 'post',
     body: JSON.stringify(data),
     headers: {
       authorization: `Bearer ${input.apiKey}`,
