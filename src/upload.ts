@@ -29,7 +29,7 @@ export async function uploadBuildArtifact(
   filePath: string,
   contentType = 'application/json'
 ): Promise<string> {
-  const url = new URL('/api/hooks/build-artifact', input.ketryxUrl);
+  const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
   url.searchParams.set('project', input.project);
   const urlString = url.toString();
   const formData = new FormData();
@@ -69,7 +69,7 @@ export async function uploadBuild(
     log: input.log,
     artifacts,
   };
-  const url = new URL('/api/hooks/build', input.ketryxUrl);
+  const url = new URL('/api/v1/builds', input.ketryxUrl);
   const urlString = url.toString();
 
   core.debug(`Sending request to ${urlString}`);
