@@ -195,7 +195,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const util_1 = __nccwpck_require__(4024);
 function uploadBuildArtifact(input, filePath, contentType = 'application/json') {
     return __awaiter(this, void 0, void 0, function* () {
-        const url = new URL('/api/hooks/build-artifact', input.ketryxUrl);
+        const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
         url.searchParams.set('project', input.project);
         const urlString = url.toString();
         const formData = new node_fetch_1.FormData();
@@ -230,7 +230,7 @@ function uploadBuild(input, artifacts) {
             log: input.log,
             artifacts,
         };
-        const url = new URL('/api/hooks/build', input.ketryxUrl);
+        const url = new URL('/api/v1/builds', input.ketryxUrl);
         const urlString = url.toString();
         core.debug(`Sending request to ${urlString}`);
         const response = yield (0, node_fetch_1.default)(urlString, {
