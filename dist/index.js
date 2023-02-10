@@ -220,8 +220,25 @@ function uploadBuildArtifact(input, filePath, contentType = 'application/json') 
     });
 }
 exports.uploadBuildArtifact = uploadBuildArtifact;
+function getGitHubRunUrl() {
+    // As described on https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+    // the build URL is of the following form:
+    // $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+    const serverUrl = process.env.GITHUB_SERVER_URL;
+    const repository = process.env.GITHUB_REPOSITORY;
+    const runId = process.env.GITHUB_RUN_ID;
+    if (!serverUrl) {
+        return '';
+    }
+    if (!repository || !runId) {
+        // If, for whatever reason, these are not set, just use the server URL.
+        return serverUrl;
+    }
+    return `${serverUrl}/${repository}/actions/runs/${runId}`;
+}
 function uploadBuild(input, artifacts) {
     return __awaiter(this, void 0, void 0, function* () {
+        const sourceUrl = getGitHubRunUrl();
         const data = {
             project: input.project,
             version: input.version,
@@ -229,6 +246,7 @@ function uploadBuild(input, artifacts) {
             commitSha: input.commitSha,
             log: input.log,
             artifacts,
+            sourceUrl,
         };
         const url = new URL('/api/v1/builds', input.ketryxUrl);
         const urlString = url.toString();
