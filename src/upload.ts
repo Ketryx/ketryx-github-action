@@ -15,6 +15,7 @@ type BuildApiInputData = {
   commitSha?: string;
   buildName?: string;
   log?: string;
+  sourceUrl?: string;
   tests?: Array<{
     testedItem: string;
     result: 'PASS' | 'FAIL';
@@ -57,10 +58,29 @@ export async function uploadBuildArtifact(
   throw new Error(`Unexpected response data from ${urlString}`);
 }
 
+function getGitHubRunUrl(): string {
+  // As described on https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+  // the build URL is of the following form:
+  // $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+  const serverUrl = process.env.GITHUB_SERVER_URL;
+  const repository = process.env.GITHUB_REPOSITORY;
+  const runId = process.env.GITHUB_RUN_ID;
+  if (!serverUrl) {
+    return '';
+  }
+  if (!repository || !runId) {
+    // If, for whatever reason, these are not set, just use the server URL.
+    return serverUrl;
+  }
+  return `${serverUrl}/${repository}/actions/runs/${runId}`;
+}
+
 export async function uploadBuild(
   input: ActionInput,
   artifacts: ArtifactData[]
 ): Promise<{ ok: boolean; id?: string | null }> {
+  const sourceUrl = getGitHubRunUrl();
+
   const data: BuildApiInputData = {
     project: input.project,
     version: input.version,
@@ -68,6 +88,7 @@ export async function uploadBuild(
     commitSha: input.commitSha,
     log: input.log,
     artifacts,
+    sourceUrl,
   };
   const url = new URL('/api/v1/builds', input.ketryxUrl);
   const urlString = url.toString();
