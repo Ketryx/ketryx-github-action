@@ -210,7 +210,7 @@ function uploadBuildArtifact(input, filePath, contentType = 'application/json') 
             },
         });
         if (response.status !== 200) {
-            throw new Error(`Error uploading build artifact to ${urlString}`);
+            throw new Error(`Error uploading build artifact to ${urlString}: status ${response.status}`);
         }
         const responseData = yield response.json();
         if ((0, util_1.hasProperty)(responseData, 'id') && typeof responseData.id === 'string') {

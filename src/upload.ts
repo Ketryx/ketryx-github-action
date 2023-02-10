@@ -47,7 +47,9 @@ export async function uploadBuildArtifact(
   });
 
   if (response.status !== 200) {
-    throw new Error(`Error uploading build artifact to ${urlString}`);
+    throw new Error(
+      `Error uploading build artifact to ${urlString}: status ${response.status}`
+    );
   }
 
   const responseData = await response.json();
