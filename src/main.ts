@@ -41,9 +41,9 @@ async function run(): Promise<void> {
     const buildData = await uploadBuild(input, artifacts);
 
     if (buildData.ok) {
-      core.info(`Sent build data to Ketryx: ${buildData.buildId}`);
+      core.info(`Reported build to Ketryx: ${buildData.buildId}`);
     } else {
-      core.setFailed(`Failed to send build data to Ketryx: ${buildData.error}`);
+      core.setFailed(`Failure reporting build to Ketryx: ${buildData.error}`);
     }
 
     core.setOutput('ok', buildData.ok);
