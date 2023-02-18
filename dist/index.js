@@ -280,11 +280,16 @@ function uploadBuild(input, artifacts) {
         if (response.status !== 200) {
             let error = `Error status ${response.status}`;
             const contentType = response.headers.get('content-type');
-            if (contentType === 'application/json') {
+            if (contentType === 'application/json' ||
+                (contentType === null || contentType === void 0 ? void 0 : contentType.startsWith('application/json;'))) {
                 const responseData = (yield response.json());
+                core.debug(`Received response status ${response.status}, JSON ${JSON.stringify(responseData)}`);
                 if (responseData.error) {
                     error = responseData.error;
                 }
+            }
+            else {
+                core.debug(`Received response status ${response.status}, type ${contentType || 'unspecified'}`);
             }
             return { ok: false, error };
         }
