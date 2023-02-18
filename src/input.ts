@@ -11,6 +11,8 @@ export type ActionInput = {
   artifactPath: string[];
   testCucumberPath: string[];
   testJunitPath: string[];
+  checkDependenciesStatus: boolean;
+  checkReleaseStatus: boolean;
 };
 
 export function readActionInput(): ActionInput {
@@ -36,6 +38,11 @@ export function readActionInput(): ActionInput {
 
   const log = core.getInput('log');
 
+  const checkDependenciesStatus = core.getBooleanInput(
+    'check-dependencies-status'
+  );
+  const checkReleaseStatus = core.getBooleanInput('check-release-status');
+
   return {
     ketryxUrl,
     project,
@@ -47,5 +54,7 @@ export function readActionInput(): ActionInput {
     testCucumberPath,
     testJunitPath,
     buildName,
+    checkDependenciesStatus,
+    checkReleaseStatus,
   };
 }

@@ -33,6 +33,13 @@ inputs:
   test-junit-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of JUnit XML files containing test results'
+outputs:
+  ok:
+    description: 'Whether sending the build to Ketryx and any included checks were successful'
+  error:
+    description: 'Error description, in case the build was not OK'
+  build-id:
+    description: 'Ketryx ID of the reported build'
 runs:
   using: 'node16'
   main: 'dist/index.js'

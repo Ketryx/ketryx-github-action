@@ -16,6 +16,8 @@ type BuildApiInputData = {
   buildName?: string;
   log?: string;
   sourceUrl?: string;
+  repositoryUrls?: string[];
+  syncRepositoryUpdate?: boolean;
   tests?: Array<{
     testedItem: string;
     result: 'PASS' | 'FAIL';
@@ -23,6 +25,21 @@ type BuildApiInputData = {
     log?: string;
   }>;
   artifacts?: Array<ArtifactData>;
+  checkDependenciesStatus?: boolean;
+  checkReleaseStatus?: boolean;
+};
+
+type BuildApiResponseData = {
+  ok?: boolean;
+  error?: string;
+  buildId?: string;
+  projectId?: string;
+  repositoryIds?: string[];
+  versionIds?: string[];
+  commitShas?: string[];
+  dependenciesAccepted?: boolean | null;
+  dependenciesControlled?: boolean | null;
+  versionsReleased?: boolean | null;
 };
 
 export async function uploadBuildArtifact(
@@ -60,6 +77,12 @@ export async function uploadBuildArtifact(
   throw new Error(`Unexpected response data from ${urlString}`);
 }
 
+function getGitHubRepositoryUrl(): string {
+  const serverUrl = process.env.GITHUB_SERVER_URL;
+  const repository = process.env.GITHUB_REPOSITORY;
+  return `${serverUrl}/${repository}`;
+}
+
 function getGitHubRunUrl(): string {
   // As described on https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
   // the build URL is of the following form:
@@ -80,8 +103,9 @@ function getGitHubRunUrl(): string {
 export async function uploadBuild(
   input: ActionInput,
   artifacts: ArtifactData[]
-): Promise<{ ok: boolean; id?: string | null }> {
+): Promise<BuildApiResponseData> {
   const sourceUrl = getGitHubRunUrl();
+  const repositoryUrl = getGitHubRepositoryUrl();
 
   const data: BuildApiInputData = {
     project: input.project,
@@ -91,11 +115,19 @@ export async function uploadBuild(
     log: input.log,
     artifacts,
     sourceUrl,
+    repositoryUrls: [repositoryUrl],
+
+    // When checking for dependencies or release status, trigger a synchronous update of the repository
+    // on the Ketryx side, to make sure the current commit can be found.
+    syncRepositoryUpdate:
+      input.checkDependenciesStatus || input.checkReleaseStatus,
+    checkDependenciesStatus: input.checkDependenciesStatus,
+    checkReleaseStatus: input.checkReleaseStatus,
   };
   const url = new URL('/api/v1/builds', input.ketryxUrl);
   const urlString = url.toString();
 
-  core.debug(`Sending request to ${urlString}`);
+  core.debug(`Sending request to ${urlString}: ${JSON.stringify(data)}`);
   const response = await fetch(urlString, {
     method: 'post',
     body: JSON.stringify(data),
@@ -107,14 +139,7 @@ export async function uploadBuild(
   if (response.status !== 200) {
     return { ok: false };
   }
-  const responseData = await response.json();
-  const ok =
-    hasProperty(responseData, 'ok') &&
-    typeof responseData.ok === 'boolean' &&
-    responseData.ok;
-  const id =
-    hasProperty(responseData, 'id') && typeof responseData.id === 'string'
-      ? responseData.id
-      : null;
-  return { ok, id };
+  const responseData = (await response.json()) as BuildApiResponseData;
+  core.debug(`Received response ${JSON.stringify(responseData)}`);
+  return responseData;
 }

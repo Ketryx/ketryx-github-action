@@ -41,14 +41,16 @@ async function run(): Promise<void> {
     const buildData = await uploadBuild(input, artifacts);
 
     if (buildData.ok) {
-      core.info(`Sent build data to Ketryx: ${buildData.id}`);
+      core.info(`Sent build data to Ketryx: ${buildData.buildId}`);
     } else {
-      core.setFailed('Failed to send build data to Ketryx');
+      core.setFailed(`Failed to send build data to Ketryx: ${buildData.error}`);
     }
 
     core.setOutput('ok', buildData.ok);
-    core.setOutput('id', buildData.id);
+    core.setOutput('error', buildData.error);
+    core.setOutput('build-id', buildData.buildId);
   } catch (error) {
+    core.debug(`Encountered error ${error}`);
     if (error instanceof Error) {
       core.setFailed(error.message);
     }
