@@ -36,9 +36,11 @@ inputs:
   check-dependencies-status:
     required: false
     description: 'Checks the status of dependencies, and fails the build if not all dependencies in the current commit are accepted and controlled'
+    default: 'false'
   check-release-status:
     required: false
     description: 'Checks the status of the given version or the version(s) corresponding to the current commit, and fails the build if the versions are not all released'
+    default: 'false'
 outputs:
   ok:
     description: 'Whether sending the build to Ketryx and any included checks were successful'
