@@ -137,7 +137,15 @@ export async function uploadBuild(
     },
   });
   if (response.status !== 200) {
-    return { ok: false };
+    let error = `Error status ${response.status}`;
+    const contentType = response.headers.get('content-type');
+    if (contentType === 'application/json') {
+      const responseData = (await response.json()) as BuildApiResponseData;
+      if (responseData.error) {
+        error = responseData.error;
+      }
+    }
+    return { ok: false, error };
   }
   const responseData = (await response.json()) as BuildApiResponseData;
   core.debug(`Received response ${JSON.stringify(responseData)}`);

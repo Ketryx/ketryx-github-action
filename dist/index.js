@@ -278,7 +278,15 @@ function uploadBuild(input, artifacts) {
             },
         });
         if (response.status !== 200) {
-            return { ok: false };
+            let error = `Error status ${response.status}`;
+            const contentType = response.headers.get('content-type');
+            if (contentType === 'application/json') {
+                const responseData = (yield response.json());
+                if (responseData.error) {
+                    error = responseData.error;
+                }
+            }
+            return { ok: false, error };
         }
         const responseData = (yield response.json());
         core.debug(`Received response ${JSON.stringify(responseData)}`);
