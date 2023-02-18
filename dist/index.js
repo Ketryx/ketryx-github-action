@@ -45,6 +45,8 @@ function readActionInput() {
     const testCucumberPath = core.getMultilineInput('test-cucumber-path');
     const testJunitPath = core.getMultilineInput('test-junit-path');
     const log = core.getInput('log');
+    const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
+    const checkReleaseStatus = core.getBooleanInput('check-release-status');
     return {
         ketryxUrl,
         project,
@@ -56,6 +58,8 @@ function readActionInput() {
         testCucumberPath,
         testJunitPath,
         buildName,
+        checkDependenciesStatus,
+        checkReleaseStatus,
     };
 }
 exports.readActionInput = readActionInput;
@@ -131,15 +135,17 @@ function run() {
             }
             const buildData = yield (0, upload_1.uploadBuild)(input, artifacts);
             if (buildData.ok) {
-                core.info(`Sent build data to Ketryx: ${buildData.id}`);
+                core.info(`Sent build data to Ketryx: ${buildData.buildId}`);
             }
             else {
-                core.setFailed('Failed to send build data to Ketryx');
+                core.setFailed(`Failed to send build data to Ketryx: ${buildData.error}`);
             }
             core.setOutput('ok', buildData.ok);
-            core.setOutput('id', buildData.id);
+            core.setOutput('error', buildData.error);
+            core.setOutput('build-id', buildData.buildId);
         }
         catch (error) {
+            core.debug(`Encountered error ${error}`);
             if (error instanceof Error) {
                 core.setFailed(error.message);
             }
@@ -220,6 +226,11 @@ function uploadBuildArtifact(input, filePath, contentType = 'application/json') 
     });
 }
 exports.uploadBuildArtifact = uploadBuildArtifact;
+function getGitHubRepositoryUrl() {
+    const serverUrl = process.env.GITHUB_SERVER_URL;
+    const repository = process.env.GITHUB_REPOSITORY;
+    return `${serverUrl}/${repository}`;
+}
 function getGitHubRunUrl() {
     // As described on https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
     // the build URL is of the following form:
@@ -239,6 +250,7 @@ function getGitHubRunUrl() {
 function uploadBuild(input, artifacts) {
     return __awaiter(this, void 0, void 0, function* () {
         const sourceUrl = getGitHubRunUrl();
+        const repositoryUrl = getGitHubRepositoryUrl();
         const data = {
             project: input.project,
             version: input.version,
@@ -247,10 +259,16 @@ function uploadBuild(input, artifacts) {
             log: input.log,
             artifacts,
             sourceUrl,
+            repositoryUrls: [repositoryUrl],
+            // When checking for dependencies or release status, trigger a synchronous update of the repository
+            // on the Ketryx side, to make sure the current commit can be found.
+            syncRepositoryUpdate: input.checkDependenciesStatus || input.checkReleaseStatus,
+            checkDependenciesStatus: input.checkDependenciesStatus,
+            checkReleaseStatus: input.checkReleaseStatus,
         };
         const url = new URL('/api/v1/builds', input.ketryxUrl);
         const urlString = url.toString();
-        core.debug(`Sending request to ${urlString}`);
+        core.debug(`Sending request to ${urlString}: ${JSON.stringify(data)}`);
         const response = yield (0, node_fetch_1.default)(urlString, {
             method: 'post',
             body: JSON.stringify(data),
@@ -262,14 +280,9 @@ function uploadBuild(input, artifacts) {
         if (response.status !== 200) {
             return { ok: false };
         }
-        const responseData = yield response.json();
-        const ok = (0, util_1.hasProperty)(responseData, 'ok') &&
-            typeof responseData.ok === 'boolean' &&
-            responseData.ok;
-        const id = (0, util_1.hasProperty)(responseData, 'id') && typeof responseData.id === 'string'
-            ? responseData.id
-            : null;
-        return { ok, id };
+        const responseData = (yield response.json());
+        core.debug(`Received response ${JSON.stringify(responseData)}`);
+        return responseData;
     });
 }
 exports.uploadBuild = uploadBuild;
