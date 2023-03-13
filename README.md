@@ -23,6 +23,30 @@ See [action.yml](action.yml)
     test-junit-path: test-results/*.xml
 ```
 
+### Check approval status of dependencies
+
+```yaml
+- name: Check dependency approval status
+  uses: Ketryx/ketryx-github-action
+  with:
+    ketryx-url: ${{ secrets.KETRYX_URL }}
+    project: ${{ secrets.KETRYX_PROJECT }}
+    api-key: ${{ secrets.KETRYX_API_KEY }}
+    check-dependencies-status: true
+```
+
+### Check status of release
+
+```yaml
+- name: Check dependency approval status
+  uses: Ketryx/ketryx-github-action
+  with:
+    ketryx-url: ${{ secrets.KETRYX_URL }}
+    project: ${{ secrets.KETRYX_PROJECT }}
+    api-key: ${{ secrets.KETRYX_API_KEY }}
+    check-release-status: true
+```
+
 ## Development
 
 This action is based on the [typescript-action](https://github.com/actions/typescript-action) template.
