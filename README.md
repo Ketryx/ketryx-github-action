@@ -1,10 +1,10 @@
 # Ketryx GitHub Action
 
-This GitHub Action sends build results to Ketryx.
+This GitHub Action reports builds and test results to [Ketryx](https://www.ketryx.com/).
 
 ## Usage
 
-See [action.yml](action.yml)
+See also: [action.yml](action.yml)
 
 ### Upload test results and artifacts
 
@@ -55,6 +55,7 @@ Relevant documentation:
 
 * [metadata syntax](https://help.github.com/en/articles/metadata-syntax-for-github-actions)
 * [toolkit documentation](https://github.com/actions/toolkit/blob/master/README.md#packages)
+* [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
 
 Install the dependencies:
 ```bash
@@ -66,34 +67,4 @@ Build the typescript and package it for distribution:
 $ npm run build && npm run package
 ```
 
-Run the tests :heavy_check_mark:  
-```bash
-$ npm test
-
- PASS  ./index.test.js
-  ✓ throws invalid number (3ms)
-  ✓ wait 500 ms (504ms)
-  ✓ test runs (95ms)
-
-...
-```
-
-Actions are run from GitHub repos, so we will checkin the packed dist folder. 
-
-Run [ncc](https://github.com/zeit/ncc) and push the results:
-```bash
-$ npm run package
-$ git add dist
-$ git commit -a -m "prod dependencies"
-$ git push origin releases/v1
-```
-
-Note: We recommend using the `--license` option for ncc, which will create a license file for all of the production node modules used in your project.
-
-Your action is now published! :rocket: 
-
-See the [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
-
-See the [actions tab](https://github.com/actions/typescript-action/actions) for runs of this action! :rocket:
-
-After testing you can [create a v1 tag](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md) to reference the stable and latest V1 action.
+Actions are run from GitHub repos, so the `dist` folder should be checked in.

@@ -1,8 +1,7 @@
 {
   "name": "ketryx-github-action",
-  "version": "0.1.0",
-  "private": true,
-  "description": "GitHub Action to send build results to Ketryx",
+  "version": "1.0.0",
+  "description": "GitHub Action to report builds and test results to Ketryx",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -19,8 +18,11 @@
   },
   "keywords": [
     "actions",
-    "node",
-    "setup"
+    "ci",
+    "cicd",
+    "ketryx",
+    "tests",
+    "compliance"
   ],
   "author": "Jan Poeschko <jan@ketryx.com>",
   "license": "MIT",
