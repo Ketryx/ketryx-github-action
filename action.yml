@@ -1,6 +1,12 @@
 name: 'Ketryx'
 description: 'Send build results to Ketryx'
 author: 'Ketryx'
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
+branding:
+  icon: check-square
+  color: green
 inputs:
   ketryx-url:
     required: false
@@ -48,6 +54,3 @@ outputs:
     description: 'Error description, in case the build was not OK'
   build-id:
     description: 'Ketryx ID of the reported build'
-runs:
-  using: 'node16'
-  main: 'dist/index.js'
