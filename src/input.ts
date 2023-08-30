@@ -47,7 +47,12 @@ export function readActionInput(): ActionInput {
     ketryxUrl,
     project,
     version,
-    commitSha,
+
+    // If an explicit `version` is specified, do not consider the `commitSha` parameter.
+    // The build should be associated with a Ketryx project version just based on the version ID
+    // in this case.
+    commitSha: version ? undefined : commitSha,
+
     apiKey,
     log,
     artifactPath,
