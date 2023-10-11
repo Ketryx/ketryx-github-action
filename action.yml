@@ -39,6 +39,10 @@ inputs:
   test-junit-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of JUnit XML files containing test results'
+  report-vulnerabilities:
+    required: false
+    description: 'Whether to report vulnerabilities found for dependencies'
+    default: 'false'
   check-dependencies-status:
     required: false
     description: 'Checks the status of dependencies, and fails the build if not all dependencies in the current commit are accepted and controlled'
