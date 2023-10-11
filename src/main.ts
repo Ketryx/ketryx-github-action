@@ -46,6 +46,12 @@ async function run(): Promise<void> {
       core.setFailed(`Failure reporting build to Ketryx: ${buildData.error}`);
     }
 
+    if (buildData.vulnerabilities) {
+      for (const vulnerability of buildData.vulnerabilities) {
+        core.error(vulnerability.summary, { file: vulnerability.filePaths[0] });
+      }
+    }
+
     core.setOutput('ok', buildData.ok);
     core.setOutput('error', buildData.error);
     core.setOutput('build-id', buildData.buildId);
