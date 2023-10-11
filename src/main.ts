@@ -47,8 +47,12 @@ async function run(): Promise<void> {
     }
 
     if (buildData.vulnerabilities) {
+      core.info(`Vulnerabilities: ${buildData.vulnerabilities.length}`);
       for (const vulnerability of buildData.vulnerabilities) {
-        core.error(vulnerability.summary, { file: vulnerability.filePaths[0] });
+        core.error(vulnerability.summary, {
+          file: vulnerability.filePaths[0],
+          title: vulnerability.dependencyName,
+        });
       }
     }
 
