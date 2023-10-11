@@ -49,6 +49,7 @@ function readActionInput() {
     const testCucumberPath = core.getMultilineInput('test-cucumber-path');
     const testJunitPath = core.getMultilineInput('test-junit-path');
     const log = core.getInput('log');
+    const reportVulnerabilities = core.getBooleanInput('report-vulnerabilities');
     const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
     const checkReleaseStatus = core.getBooleanInput('check-release-status');
     return {
@@ -65,6 +66,7 @@ function readActionInput() {
         testCucumberPath,
         testJunitPath,
         buildName,
+        reportVulnerabilities,
         checkDependenciesStatus,
         checkReleaseStatus,
     };
@@ -150,6 +152,15 @@ function run() {
             }
             else {
                 core.setFailed(`Failure reporting build to Ketryx: ${buildData.error}`);
+            }
+            if (buildData.vulnerabilities) {
+                core.info(`Vulnerabilities: ${buildData.vulnerabilities.length}`);
+                for (const vulnerability of buildData.vulnerabilities) {
+                    core.error(vulnerability.summary, {
+                        file: vulnerability.filePaths[0],
+                        title: vulnerability.dependencyName,
+                    });
+                }
             }
             core.setOutput('ok', buildData.ok);
             core.setOutput('error', buildData.error);
@@ -278,6 +289,7 @@ function uploadBuild(input, artifacts) {
             // When checking for dependencies or release status, trigger a synchronous update of the repository
             // on the Ketryx side, to make sure the current commit can be found.
             syncRepositoryUpdate: input.checkDependenciesStatus || input.checkReleaseStatus,
+            returnVulnerabilities: input.reportVulnerabilities,
             checkDependenciesStatus: input.checkDependenciesStatus,
             checkReleaseStatus: input.checkReleaseStatus,
         };
