@@ -25,6 +25,7 @@ type BuildApiInputData = {
     log?: string;
   }>;
   artifacts?: Array<ArtifactData>;
+  returnVulnerabilities?: boolean;
   checkDependenciesStatus?: boolean;
   checkReleaseStatus?: boolean;
 };
@@ -40,6 +41,18 @@ type BuildApiResponseData = {
   dependenciesAccepted?: boolean | null;
   dependenciesControlled?: boolean | null;
   versionsReleased?: boolean | null;
+  vulnerabilities?: VulnerabilityReturnData[];
+};
+
+type VulnerabilityReturnData = {
+  id: string;
+  summary: string;
+  description: string;
+  severity: number | null;
+  version: string;
+  urls: string[];
+  filePaths: string[];
+  dependencyName: string;
 };
 
 export async function uploadBuildArtifact(
@@ -121,6 +134,8 @@ export async function uploadBuild(
     // on the Ketryx side, to make sure the current commit can be found.
     syncRepositoryUpdate:
       input.checkDependenciesStatus || input.checkReleaseStatus,
+
+    returnVulnerabilities: input.reportVulnerabilities,
     checkDependenciesStatus: input.checkDependenciesStatus,
     checkReleaseStatus: input.checkReleaseStatus,
   };

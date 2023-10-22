@@ -11,6 +11,7 @@ export type ActionInput = {
   artifactPath: string[];
   testCucumberPath: string[];
   testJunitPath: string[];
+  reportVulnerabilities: boolean;
   checkDependenciesStatus: boolean;
   checkReleaseStatus: boolean;
 };
@@ -38,6 +39,7 @@ export function readActionInput(): ActionInput {
 
   const log = core.getInput('log');
 
+  const reportVulnerabilities = core.getBooleanInput('report-vulnerabilities');
   const checkDependenciesStatus = core.getBooleanInput(
     'check-dependencies-status'
   );
@@ -59,6 +61,7 @@ export function readActionInput(): ActionInput {
     testCucumberPath,
     testJunitPath,
     buildName,
+    reportVulnerabilities,
     checkDependenciesStatus,
     checkReleaseStatus,
   };
