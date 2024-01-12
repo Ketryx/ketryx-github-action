@@ -11,6 +11,7 @@ export type ActionInput = {
   artifactPath: string[];
   testCucumberPath: string[];
   testJunitPath: string[];
+  spdxJsonPath: string[];
   checkDependenciesStatus: boolean;
   checkReleaseStatus: boolean;
 };
@@ -35,6 +36,7 @@ export function readActionInput(): ActionInput {
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
   const testJunitPath = core.getMultilineInput('test-junit-path');
+  const spdxJsonPath = core.getMultilineInput('spdx-json-path');
 
   const log = core.getInput('log');
 
@@ -58,6 +60,7 @@ export function readActionInput(): ActionInput {
     artifactPath,
     testCucumberPath,
     testJunitPath,
+    spdxJsonPath,
     buildName,
     checkDependenciesStatus,
     checkReleaseStatus,

@@ -6,7 +6,7 @@ import { hasProperty } from './util';
 
 export type ArtifactData = {
   id: string;
-  type: 'artifact' | 'cucumber-json' | 'junit-xml';
+  type: 'artifact' | 'cucumber-json' | 'junit-xml' | 'spdx-json';
 };
 
 type BuildApiInputData = {

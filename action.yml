@@ -2,7 +2,7 @@ name: 'Ketryx'
 description: 'Send build results to Ketryx'
 author: 'Ketryx'
 runs:
-  using: 'node16'
+  using: 'node20'
   main: 'dist/index.js'
 branding:
   icon: check-square
@@ -39,6 +39,9 @@ inputs:
   test-junit-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of JUnit XML files containing test results'
+  spdx-json-path:
+    required: false
+    description: 'Paths (newline-separated glob patterns) of SPDX JSON files'
   check-dependencies-status:
     required: false
     description: 'Checks the status of dependencies, and fails the build if not all dependencies in the current commit are accepted and controlled'
