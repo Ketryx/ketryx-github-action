@@ -48,6 +48,7 @@ function readActionInput() {
     const artifactPath = core.getMultilineInput('artifact-path');
     const testCucumberPath = core.getMultilineInput('test-cucumber-path');
     const testJunitPath = core.getMultilineInput('test-junit-path');
+    const spdxJsonPath = core.getMultilineInput('spdx-json-path');
     const log = core.getInput('log');
     const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
     const checkReleaseStatus = core.getBooleanInput('check-release-status');
@@ -64,6 +65,7 @@ function readActionInput() {
         artifactPath,
         testCucumberPath,
         testJunitPath,
+        spdxJsonPath,
         buildName,
         checkDependenciesStatus,
         checkReleaseStatus,
@@ -142,6 +144,12 @@ function run() {
                 for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
                     const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, 'application/xml');
                     artifacts.push({ id: fileId, type: 'junit-xml' });
+                }
+            }
+            for (const pattern of input.spdxJsonPath) {
+                for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
+                    const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath);
+                    artifacts.push({ id: fileId, type: 'spdx-json' });
                 }
             }
             const buildData = yield (0, upload_1.uploadBuild)(input, artifacts);

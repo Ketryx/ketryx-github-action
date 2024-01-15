@@ -37,6 +37,12 @@ async function run(): Promise<void> {
         artifacts.push({ id: fileId, type: 'junit-xml' });
       }
     }
+    for (const pattern of input.spdxJsonPath) {
+      for (const filePath of await glob(pattern)) {
+        const fileId = await uploadBuildArtifact(input, filePath);
+        artifacts.push({ id: fileId, type: 'spdx-json' });
+      }
+    }
 
     const buildData = await uploadBuild(input, artifacts);
 

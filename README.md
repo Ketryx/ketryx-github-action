@@ -24,6 +24,18 @@ Also refer to the [documentation on workflow YAML syntax](https://help.github.co
     test-junit-path: test-results/*.xml
 ```
 
+### Upload SPDX JSON files
+
+```yaml
+- name: Report build to Ketryx
+  uses: Ketryx/ketryx-github-action
+  with:
+    project: ${{ secrets.KETRYX_PROJECT }}
+    api-key: ${{ secrets.KETRYX_API_KEY }}
+    spdx-json-path: |
+      build/**/*.spdx.json
+```
+
 ### Check approval status of dependencies
 
 ```yaml
@@ -59,7 +71,7 @@ By default, a build will be associated with all project versions whose _release 
 | `project`                   | Ketryx project ID                                                                                                                                      | **Yes**  | `KXPRJ49GQYFQ5RR9KRTPWTRTC39YZ9W`          |
 | `api-key`                   | Ketryx API key                                                                                                                                         | **Yes**  | `KXTK_...`                                 |
 | `ketryx-url`                | Ketryx server URL (if not set, will default to `https://app.ketryx.com`)                                                                               | No       | `https://app.ketryx.com`                   |
-| `version`                   | Ketryx version name or ID (if not set, the build will be associated with a version based on the commit SHA)                                            | No       | `KXVSN352CZED7078FC8DN23YYZVM59D`          | 
+| `version`                   | Ketryx version name or ID (if not set, the build will be associated with a version based on the commit SHA)                                            | No       | `KXVSN352CZED7078FC8DN23YYZVM59D`          |
 | `commitSha`                 | Commit SHA (if not set, will use the environment variable `GITHUB_SHA` provided by GitHub Actions)                                                     | No       | `ad4db8ac1e70bd41aa8bcee6f00a3a1e36bb0e01` |
 | `build-name`                | Build name to disambiguate several parallel builds                                                                                                     | No       | `ci-integration-tests`                     |
 | `log`                       | Log output to store with the build                                                                                                                     | No       |                                            |
@@ -80,12 +92,14 @@ Relevant documentation:
 * [versioning documentation](https://github.com/actions/toolkit/blob/master/docs/action-versioning.md)
 
 Install the dependencies:
-```bash
+
+```console
 $ npm install
 ```
 
 Build the typescript and package it for distribution:
-```bash
+
+```console
 $ npm run build && npm run package
 ```
 
