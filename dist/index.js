@@ -290,6 +290,7 @@ function uploadBuild(input, artifacts) {
             version: input.version,
             buildName: input.buildName,
             commitSha: input.commitSha,
+            changeRequestNumber: input.changeRequestNumber,
             log: input.log,
             artifacts,
             sourceUrl,
@@ -298,6 +299,7 @@ function uploadBuild(input, artifacts) {
             // on the Ketryx side, to make sure the current commit can be found.
             syncRepositoryUpdate: input.checkDependenciesStatus || input.checkReleaseStatus,
             checkDependenciesStatus: input.checkDependenciesStatus,
+            checkChangeRequestItemAssociation: input.checkChangeRequestItemAssociation,
             checkReleaseStatus: input.checkReleaseStatus,
         };
         const url = new URL('/api/v1/builds', input.ketryxUrl);
