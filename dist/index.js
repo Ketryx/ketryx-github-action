@@ -45,12 +45,21 @@ function readActionInput() {
     const version = core.getInput('version');
     const commitSha = core.getInput('commit-sha') || process.env.GITHUB_SHA;
     const buildName = core.getInput('build-name');
+    // According to https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+    // GITHUB_REF_NAME is of the form <pr_number>/merge,
+    // so we can use this to extract the PR number.
+    const refName = process.env.GITHUB_REF_NAME;
+    const changeRequestNumberStr = refName && refName.endsWith('/merge')
+        ? refName.substring(0, refName.length - '/merge'.length)
+        : null;
+    const changeRequestNumber = (changeRequestNumberStr && Number.parseInt(changeRequestNumberStr)) || null;
     const artifactPath = core.getMultilineInput('artifact-path');
     const testCucumberPath = core.getMultilineInput('test-cucumber-path');
     const testJunitPath = core.getMultilineInput('test-junit-path');
     const spdxJsonPath = core.getMultilineInput('spdx-json-path');
     const log = core.getInput('log');
     const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
+    const checkChangeRequestItemAssociation = core.getBooleanInput('check-item-association');
     const checkReleaseStatus = core.getBooleanInput('check-release-status');
     return {
         ketryxUrl,
@@ -61,6 +70,7 @@ function readActionInput() {
         // in this case.
         commitSha: version ? undefined : commitSha,
         apiKey,
+        changeRequestNumber,
         log,
         artifactPath,
         testCucumberPath,
@@ -68,6 +78,7 @@ function readActionInput() {
         spdxJsonPath,
         buildName,
         checkDependenciesStatus,
+        checkChangeRequestItemAssociation,
         checkReleaseStatus,
     };
 }
