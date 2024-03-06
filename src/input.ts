@@ -6,6 +6,7 @@ export type ActionInput = {
   project: string;
   version?: string;
   commitSha?: string;
+  changeRequestNumber?: number | null;
   buildName?: string;
   log?: string;
   artifactPath: string[];
@@ -13,6 +14,7 @@ export type ActionInput = {
   testJunitPath: string[];
   spdxJsonPath: string[];
   checkDependenciesStatus: boolean;
+  checkChangeRequestItemAssociation: boolean;
   checkReleaseStatus: boolean;
 };
 
@@ -33,6 +35,17 @@ export function readActionInput(): ActionInput {
   const commitSha = core.getInput('commit-sha') || process.env.GITHUB_SHA;
   const buildName = core.getInput('build-name');
 
+  // According to https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+  // GITHUB_REF_NAME is of the form <pr_number>/merge,
+  // so we can use this to extract the PR number.
+  const refName = process.env.GITHUB_REF_NAME;
+  const changeRequestNumberStr =
+    refName && refName.endsWith('/merge')
+      ? refName.substring(0, refName.length - '/merge'.length)
+      : null;
+  const changeRequestNumber =
+    (changeRequestNumberStr && Number.parseInt(changeRequestNumberStr)) || null;
+
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
   const testJunitPath = core.getMultilineInput('test-junit-path');
@@ -42,6 +55,9 @@ export function readActionInput(): ActionInput {
 
   const checkDependenciesStatus = core.getBooleanInput(
     'check-dependencies-status'
+  );
+  const checkChangeRequestItemAssociation = core.getBooleanInput(
+    'check-item-association'
   );
   const checkReleaseStatus = core.getBooleanInput('check-release-status');
 
@@ -56,6 +72,7 @@ export function readActionInput(): ActionInput {
     commitSha: version ? undefined : commitSha,
 
     apiKey,
+    changeRequestNumber,
     log,
     artifactPath,
     testCucumberPath,
@@ -63,6 +80,7 @@ export function readActionInput(): ActionInput {
     spdxJsonPath,
     buildName,
     checkDependenciesStatus,
+    checkChangeRequestItemAssociation,
     checkReleaseStatus,
   };
 }
