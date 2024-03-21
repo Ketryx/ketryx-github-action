@@ -13,6 +13,7 @@ type BuildApiInputData = {
   project: string;
   version?: string;
   commitSha?: string;
+  changeRequestNumber?: number | null;
   buildName?: string;
   log?: string;
   sourceUrl?: string;
@@ -26,6 +27,7 @@ type BuildApiInputData = {
   }>;
   artifacts?: Array<ArtifactData>;
   checkDependenciesStatus?: boolean;
+  checkChangeRequestItemAssociation?: boolean;
   checkReleaseStatus?: boolean;
 };
 
@@ -112,6 +114,7 @@ export async function uploadBuild(
     version: input.version,
     buildName: input.buildName,
     commitSha: input.commitSha,
+    changeRequestNumber: input.changeRequestNumber,
     log: input.log,
     artifacts,
     sourceUrl,
@@ -122,6 +125,7 @@ export async function uploadBuild(
     syncRepositoryUpdate:
       input.checkDependenciesStatus || input.checkReleaseStatus,
     checkDependenciesStatus: input.checkDependenciesStatus,
+    checkChangeRequestItemAssociation: input.checkChangeRequestItemAssociation,
     checkReleaseStatus: input.checkReleaseStatus,
   };
   const url = new URL('/api/v1/builds', input.ketryxUrl);
