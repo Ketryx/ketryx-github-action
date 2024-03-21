@@ -45,6 +45,9 @@ export function readActionInput(): ActionInput {
       : null;
   const changeRequestNumber =
     (changeRequestNumberStr && Number.parseInt(changeRequestNumberStr)) || null;
+  core.debug(
+    `Determined PR number ${changeRequestNumber} based on ref name ${refName}`
+  );
 
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
