@@ -78,8 +78,9 @@ By default, a build will be associated with all project versions whose _release 
 | `artifact-path`             | Paths (newline-separated [glob](https://github.com/isaacs/node-glob#glob-primer) patterns) of build artifact files                                     | No       | `build/out-*.*`                            |
 | `test-cucumber-path`        | Paths (newline-separated glob patterns) of Cucumber JSON files containing test results                                                                 | No       | `test-results/report.json`                 |
 | `test-junit-path`           | Paths (newline-separated glob patterns) of JUnit XML files containing test results                                                                     | No       | `test-results/junit.xml`                   |
-| `spdx-json-path`            | Paths (newline-separated glob patterns) of SPDX JSON files                                                                                             | No       | `build/**/*.spdx.json`                    |
+| `spdx-json-path`            | Paths (newline-separated glob patterns) of SPDX JSON files                                                                                             | No       | `build/**/*.spdx.json`                     |
 | `check-dependencies-status` | Checks the status of dependencies, and fails the build if not all dependencies in the current commit are accepted and controlled                       | No       | `true`                                     |
+| `check-item-association`    | Checks that the pull request is associated with an item in its title or description                                                                    | No       | `true`                                     |
 | `check-release-status`      | Checks the status of the given version or the version(s) corresponding to the current commit, and fails the build if the versions are not all released | No       | `true`                                     |
 
 ## Development
