@@ -93,14 +93,7 @@ By default, a build will be associated with all project versions whose _release 
 | `build-name`                | Build name to disambiguate several parallel builds                                                                                                     | No       | `ci-integration-tests`                     |
 | `log`                       | Log output to store with the build                                                                                                                     | No       |                                            |
 | `artifact-path`             | Paths (newline-separated [glob](https://github.com/isaacs/node-glob#glob-primer) patterns) of build artifact files                                     | No       | `build/out-*.*`                            |
-| `tests`                     | YAML list of individual test results. Each test result must contain the keys `testedItem` and `result`                                                 | No       | ```yaml
-- testedItem: SAMD-45
-  result: pass
-  title: My automated test
-  log: Log output from executing this test
-  artifactPaths:
-    - build/**/*.log
-``` |
+| `tests`                     | YAML list of individual test results. Each test result must contain the keys `testedItem` and `result`                                                 | No       | <pre><code class="language-yaml">- testedItem: SAMD-45&#10;  result: pass&#10;  title: My automated test&#10;  log: Log output from executing this test&#10;  artifactPaths:&#10;    - build/**/*.log&#10;</code></pre> |
 | `test-cucumber-path`        | Paths (newline-separated glob patterns) of Cucumber JSON files containing test results                                                                 | No       | `test-results/report.json`                 |
 | `test-junit-path`           | Paths (newline-separated glob patterns) of JUnit XML files containing test results                                                                     | No       | `test-results/junit.xml`                   |
 | `spdx-json-path`            | Paths (newline-separated glob patterns) of SPDX JSON files                                                                                             | No       | `build/**/*.spdx.json`                     |
