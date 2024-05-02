@@ -66,7 +66,6 @@ async function run(): Promise<void> {
               filePath,
               'application/octet-stream'
             );
-            artifacts.push({ id: fileId, type: 'artifact' });
             uploadedArtifactId.set(filePath, fileId);
           }
 
