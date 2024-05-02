@@ -39,6 +39,18 @@ inputs:
   test-junit-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of JUnit XML files containing test results'
+  tests:
+    required: false
+    description: |-
+      YAML list of individual test results. Each test result should have the form:
+
+      ```yaml
+      - testedItem: <Ketryx ID or Jira issue key>
+        result: <PASS | FAIL>
+        title: <Title of the test (optional)>
+        log: <Log text to store with the test (optional)>
+        artifactPaths: <List glob patterns for artifact paths>
+      ```
   spdx-json-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of SPDX JSON files'

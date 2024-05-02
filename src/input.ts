@@ -1,4 +1,13 @@
 import * as core from '@actions/core';
+import YAML from 'yaml';
+
+type TestsInput = Array<{
+  testedItem: string;
+  result: 'PASS' | 'FAIL';
+  title: string;
+  log?: string;
+  artifactPaths?: Array<string>;
+}>;
 
 export type ActionInput = {
   ketryxUrl: string;
@@ -12,6 +21,7 @@ export type ActionInput = {
   artifactPath: string[];
   testCucumberPath: string[];
   testJunitPath: string[];
+  tests: TestsInput;
   spdxJsonPath: string[];
   checkDependenciesStatus: boolean;
   checkChangeRequestItemAssociation: boolean;
@@ -52,6 +62,7 @@ export function readActionInput(): ActionInput {
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
   const testJunitPath = core.getMultilineInput('test-junit-path');
+  const tests = YAML.parse(core.getInput('tests'));
   const spdxJsonPath = core.getMultilineInput('spdx-json-path');
 
   const log = core.getInput('log');
@@ -80,6 +91,7 @@ export function readActionInput(): ActionInput {
     artifactPath,
     testCucumberPath,
     testJunitPath,
+    tests,
     spdxJsonPath,
     buildName,
     checkDependenciesStatus,

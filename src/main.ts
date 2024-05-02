@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import glob from 'glob-promise';
 import { readActionInput } from './input';
-import { ArtifactData, uploadBuild, uploadBuildArtifact } from './upload';
+import { ArtifactData, TestArtifactData, TestData, uploadBuild, uploadBuildArtifact } from './upload';
 
 async function run(): Promise<void> {
   try {
@@ -11,40 +11,78 @@ async function run(): Promise<void> {
     core.debug(`Input: ${JSON.stringify(input)}`);
 
     const artifacts: ArtifactData[] = [];
-    for (const pattern of input.artifactPath) {
-      for (const filePath of await glob(pattern)) {
-        const fileId = await uploadBuildArtifact(
-          input,
-          filePath,
-          'application/octet-stream'
-        );
-        artifacts.push({ id: fileId, type: 'artifact' });
-      }
-    }
+    const uploadedArtifactId: Map<string, string> = new Map();
     for (const pattern of input.testCucumberPath) {
       for (const filePath of await glob(pattern)) {
         const fileId = await uploadBuildArtifact(input, filePath);
         artifacts.push({ id: fileId, type: 'cucumber-json' });
+        uploadedArtifactId.set(filePath, fileId);
       }
     }
     for (const pattern of input.testJunitPath) {
       for (const filePath of await glob(pattern)) {
+        if (uploadedArtifactId.has(filePath)) {
+
+        }
         const fileId = await uploadBuildArtifact(
           input,
           filePath,
           'application/xml'
         );
         artifacts.push({ id: fileId, type: 'junit-xml' });
+        uploadedArtifactId.set(filePath, fileId);
       }
     }
     for (const pattern of input.spdxJsonPath) {
       for (const filePath of await glob(pattern)) {
         const fileId = await uploadBuildArtifact(input, filePath);
         artifacts.push({ id: fileId, type: 'spdx-json' });
+        uploadedArtifactId.set(filePath, fileId);
+      }
+    }
+    for (const pattern of input.artifactPath) {
+      for (const filePath of await glob(pattern)) {
+        if (!uploadedArtifactId.has(filePath)) {
+          const fileId = await uploadBuildArtifact(
+            input,
+            filePath,
+            'application/octet-stream'
+          );
+          artifacts.push({ id: fileId, type: 'artifact' });
+          uploadedArtifactId.set(filePath, fileId);
+        }
       }
     }
 
-    const buildData = await uploadBuild(input, artifacts);
+    const tests: TestData[] = [];
+    for (const test of input.tests) {
+      const testArtifacts: TestArtifactData[] = [];
+      for (const pattern of (test.artifactPaths || [])) {
+        for (const filePath of await glob(pattern)) {
+          let fileId: string | undefined = uploadedArtifactId.get(filePath);
+          if (fileId === undefined) {
+            fileId = await uploadBuildArtifact(
+              input,
+              filePath,
+              'application/octet-stream'
+            );
+            artifacts.push({ id: fileId, type: 'artifact' });
+            uploadedArtifactId.set(filePath, fileId);
+          }
+
+          testArtifacts.push({ id: fileId });
+        }
+      }
+      tests.push({
+        testedItem: test.testedItem,
+        result: test.result,
+        title: test.title,
+        log: test.log,
+        artifacts: testArtifacts
+      });
+    }
+
+    const buildData = await uploadBuild(input, artifacts, tests);
 
     if (buildData.ok) {
       core.info(`Reported build to Ketryx: ${buildData.buildId}`);
