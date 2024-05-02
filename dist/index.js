@@ -203,7 +203,7 @@ function run() {
             const buildData = yield (0, upload_1.uploadBuild)(input, artifacts, tests);
             if (buildData.ok) {
                 core.info(`Reported build to Ketryx: ${buildData.buildId}`);
-                const buildUrl = `https://app.ketryx.com/projects/${buildData.projectId}/records/${buildData.buildId}`;
+                const buildUrl = `https://app.ketryx.com/projects/${buildData.projectId}/builds/${buildData.buildId}`;
                 core.info(`Build URL: ${buildUrl}`);
                 core.setOutput('build-url', buildUrl);
             }
