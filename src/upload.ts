@@ -15,7 +15,7 @@ export type TestArtifactData = {
 
 export type TestData = {
   testedItem: string;
-  result: 'PASS' | 'FAIL';
+  result: 'pass' | 'fail' | 'PASS' | 'FAIL';
   title: string;
   log?: string;
   artifacts?: Array<TestArtifactData>;

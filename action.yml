@@ -46,7 +46,7 @@ inputs:
 
       ```yaml
       - testedItem: <Ketryx ID or Jira issue key>
-        result: <PASS | FAIL>
+        result: <pass | fail>
         title: <Title of the test (optional)>
         log: <Log text to store with the test (optional)>
         artifactPaths: <List glob patterns for artifact paths>
