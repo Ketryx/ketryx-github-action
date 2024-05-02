@@ -87,8 +87,8 @@ async function run(): Promise<void> {
       core.info(`Reported build to Ketryx: ${buildData.buildId}`);
 
       const buildUrl = `https://app.ketryx.com/projects/${buildData.projectId}/records/${buildData.buildId}`;
+      core.info(`Build URL: ${buildUrl}`);
       core.setOutput('build-url', buildUrl);
-      await core.summary.addHeading("Ketryx build upload").addRaw(`<${buildUrl}>`);
     } else {
       core.setFailed(`Failure reporting build to Ketryx: ${buildData.error}`);
     }
