@@ -73,3 +73,5 @@ outputs:
     description: 'Error description, in case the build was not OK'
   build-id:
     description: 'Ketryx ID of the reported build'
+  build-url:
+    description: 'Ketryx URL of the reported build'
