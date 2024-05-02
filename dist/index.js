@@ -187,7 +187,6 @@ function run() {
                         let fileId = uploadedArtifactId.get(filePath);
                         if (fileId === undefined) {
                             fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, 'application/octet-stream');
-                            artifacts.push({ id: fileId, type: 'artifact' });
                             uploadedArtifactId.set(filePath, fileId);
                         }
                         testArtifacts.push({ id: fileId });
