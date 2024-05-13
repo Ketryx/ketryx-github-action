@@ -62,7 +62,7 @@ export function readActionInput(): ActionInput {
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
   const testJunitPath = core.getMultilineInput('test-junit-path');
-  const tests = YAML.parse(core.getInput('tests'));
+  const tests = YAML.parse(core.getInput('tests')) || [];
   const spdxJsonPath = core.getMultilineInput('spdx-json-path');
 
   const log = core.getInput('log');
