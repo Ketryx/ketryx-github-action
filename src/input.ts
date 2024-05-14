@@ -1,13 +1,13 @@
 import * as core from '@actions/core';
 import YAML from 'yaml';
 
-type TestsInput = Array<{
+type TestInput = {
   testedItem: string;
-  result: 'PASS' | 'FAIL';
+  result: 'pass' | 'fail' | 'PASS' | 'FAIL';
   title: string;
   log?: string;
   artifactPaths?: Array<string>;
-}>;
+};
 
 export type ActionInput = {
   ketryxUrl: string;
@@ -21,7 +21,7 @@ export type ActionInput = {
   artifactPath: string[];
   testCucumberPath: string[];
   testJunitPath: string[];
-  tests: TestsInput;
+  tests: TestInput[];
   spdxJsonPath: string[];
   checkDependenciesStatus: boolean;
   checkChangeRequestItemAssociation: boolean;
