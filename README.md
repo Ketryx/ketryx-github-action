@@ -1,6 +1,6 @@
 # Ketryx GitHub Action
 
-This GitHub Action reports builds and test results to [Ketryx](https://www.ketryx.com/).
+This GitHub Action reports builds and test results to [Ketryx](https://www.ketryx.com/) via the [build API](https://docs.ketryx.com/api/build-api).
 
 ## Usage
 
@@ -23,6 +23,8 @@ Also refer to the [documentation on workflow YAML syntax](https://help.github.co
     test-cucumber-path: test-results/report.json
     test-junit-path: test-results/*.xml
 ```
+
+Read [this documentation](https://docs.ketryx.com/manuals/man-06-test-management#id-3.4.-associating-automated-tests-with-configuration-items) for details on how to associate Cucumber and JUnit reports with Ketryx configuration items.
 
 ### Upload SPDX JSON files
 
