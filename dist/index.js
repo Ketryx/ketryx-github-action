@@ -61,7 +61,7 @@ function readActionInput() {
     const artifactPath = core.getMultilineInput('artifact-path');
     const testCucumberPath = core.getMultilineInput('test-cucumber-path');
     const testJunitPath = core.getMultilineInput('test-junit-path');
-    const tests = yaml_1.default.parse(core.getInput('tests'));
+    const tests = yaml_1.default.parse(core.getInput('tests')) || [];
     const spdxJsonPath = core.getMultilineInput('spdx-json-path');
     const log = core.getInput('log');
     const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
