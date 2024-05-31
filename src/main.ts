@@ -86,7 +86,7 @@ async function run(): Promise<void> {
     if (buildData.ok) {
       core.info(`Reported build to Ketryx: ${buildData.buildId}`);
 
-      const buildUrl = `https://app.ketryx.com/projects/${buildData.projectId}/builds/${buildData.buildId}`;
+      const buildUrl = `${input.ketryxUrl}/projects/${buildData.projectId}/builds/${buildData.buildId}`;
       core.info(`Build URL: ${buildUrl}`);
       core.setOutput('build-url', buildUrl);
     } else {
