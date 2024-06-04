@@ -156,8 +156,6 @@ function run() {
             }
             for (const pattern of input.testJunitPath) {
                 for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
-                    if (uploadedArtifactId.has(filePath)) {
-                    }
                     const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, 'application/xml');
                     artifacts.push({ id: fileId, type: 'junit-xml' });
                     uploadedArtifactId.set(filePath, fileId);
@@ -203,7 +201,7 @@ function run() {
             const buildData = yield (0, upload_1.uploadBuild)(input, artifacts, tests);
             if (buildData.ok) {
                 core.info(`Reported build to Ketryx: ${buildData.buildId}`);
-                const buildUrl = `https://app.ketryx.com/projects/${buildData.projectId}/builds/${buildData.buildId}`;
+                const buildUrl = `${input.ketryxUrl}/projects/${buildData.projectId}/builds/${buildData.buildId}`;
                 core.info(`Build URL: ${buildUrl}`);
                 core.setOutput('build-url', buildUrl);
             }
