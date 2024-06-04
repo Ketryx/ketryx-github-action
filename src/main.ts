@@ -21,9 +21,6 @@ async function run(): Promise<void> {
     }
     for (const pattern of input.testJunitPath) {
       for (const filePath of await glob(pattern)) {
-        if (uploadedArtifactId.has(filePath)) {
-
-        }
         const fileId = await uploadBuildArtifact(
           input,
           filePath,
