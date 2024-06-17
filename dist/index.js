@@ -139,54 +139,60 @@ const core = __importStar(__nccwpck_require__(2186));
 const glob_promise_1 = __importDefault(__nccwpck_require__(8252));
 const input_1 = __nccwpck_require__(8657);
 const upload_1 = __nccwpck_require__(4831);
+const BINARY_CONTENT_TYPE = 'application/octet-stream';
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const input = (0, input_1.readActionInput)();
             // debug is only output if the secret `ACTIONS_STEP_DEBUG` is set to true.
             core.debug(`Input: ${JSON.stringify(input)}`);
+            // List of all artifacts to associate with the build.
             const artifacts = [];
+            // Mapping from combination of file path and content type (separated by ':')
+            // to uploaded file IDs.
             const uploadedArtifactId = new Map();
+            const performUpload = (filePath, contentType = BINARY_CONTENT_TYPE) => __awaiter(this, void 0, void 0, function* () {
+                const cacheKey = `${filePath}:${contentType}`;
+                const existingArtifactId = uploadedArtifactId.get(cacheKey);
+                if (existingArtifactId) {
+                    return existingArtifactId;
+                }
+                const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, contentType);
+                uploadedArtifactId.set(cacheKey, fileId);
+                return fileId;
+            });
             for (const pattern of input.testCucumberPath) {
                 for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
-                    const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath);
+                    const fileId = yield performUpload(filePath, 'application/json');
                     artifacts.push({ id: fileId, type: 'cucumber-json' });
-                    uploadedArtifactId.set(filePath, fileId);
                 }
             }
             for (const pattern of input.testJunitPath) {
                 for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
-                    const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, 'application/xml');
+                    const fileId = yield performUpload(filePath, 'application/xml');
                     artifacts.push({ id: fileId, type: 'junit-xml' });
-                    uploadedArtifactId.set(filePath, fileId);
                 }
             }
             for (const pattern of input.spdxJsonPath) {
                 for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
-                    const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath);
+                    const fileId = yield performUpload(filePath, 'application/json');
                     artifacts.push({ id: fileId, type: 'spdx-json' });
-                    uploadedArtifactId.set(filePath, fileId);
                 }
             }
             for (const pattern of input.artifactPath) {
-                for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
-                    if (!uploadedArtifactId.has(filePath)) {
-                        const fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, 'application/octet-stream');
-                        artifacts.push({ id: fileId, type: 'artifact' });
-                        uploadedArtifactId.set(filePath, fileId);
-                    }
+                const { path, contentType = BINARY_CONTENT_TYPE } = typeof pattern === 'string' ? { path: pattern } : pattern;
+                for (const filePath of yield (0, glob_promise_1.default)(path)) {
+                    const fileId = yield performUpload(filePath, contentType);
+                    artifacts.push({ id: fileId, type: 'artifact' });
                 }
             }
             const tests = [];
             for (const test of input.tests) {
                 const testArtifacts = [];
-                for (const pattern of (test.artifactPaths || [])) {
-                    for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
-                        let fileId = uploadedArtifactId.get(filePath);
-                        if (fileId === undefined) {
-                            fileId = yield (0, upload_1.uploadBuildArtifact)(input, filePath, 'application/octet-stream');
-                            uploadedArtifactId.set(filePath, fileId);
-                        }
+                for (const pattern of test.artifactPaths || []) {
+                    const { path, contentType = BINARY_CONTENT_TYPE } = typeof pattern === 'string' ? { path: pattern } : pattern;
+                    for (const filePath of yield (0, glob_promise_1.default)(path)) {
+                        const fileId = yield performUpload(filePath, contentType);
                         testArtifacts.push({ id: fileId });
                     }
                 }
@@ -195,7 +201,7 @@ function run() {
                     result: test.result,
                     title: test.title,
                     log: test.log,
-                    artifacts: testArtifacts
+                    artifacts: testArtifacts,
                 });
             }
             const buildData = yield (0, upload_1.uploadBuild)(input, artifacts, tests);
@@ -271,7 +277,7 @@ const node_fetch_1 = __importStar(__nccwpck_require__(4429));
 const node_path_1 = __importDefault(__nccwpck_require__(9411));
 const core = __importStar(__nccwpck_require__(2186));
 const util_1 = __nccwpck_require__(4024);
-function uploadBuildArtifact(input, filePath, contentType = 'application/json') {
+function uploadBuildArtifact(input, filePath, contentType) {
     return __awaiter(this, void 0, void 0, function* () {
         const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
         url.searchParams.set('project', input.project);
