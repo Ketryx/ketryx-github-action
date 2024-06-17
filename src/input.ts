@@ -6,7 +6,7 @@ type TestInput = {
   result: 'pass' | 'fail' | 'PASS' | 'FAIL';
   title: string;
   log?: string;
-  artifactPaths?: Array<string>;
+  artifactPaths?: Array<string | { path: string; contentType?: string }>;
 };
 
 export type ActionInput = {
@@ -18,7 +18,7 @@ export type ActionInput = {
   changeRequestNumber?: number | null;
   buildName?: string;
   log?: string;
-  artifactPath: string[];
+  artifactPath: Array<string | { path: string; contentType?: string }>;
   testCucumberPath: string[];
   testJunitPath: string[];
   tests: TestInput[];
