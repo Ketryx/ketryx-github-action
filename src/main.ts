@@ -21,47 +21,48 @@ async function run(): Promise<void> {
     // List of all artifacts to associate with the build.
     const artifacts: ArtifactData[] = [];
 
-    // Mapping from file paths to uploaded file IDs.
+    // Mapping from combination of file path and content type (separated by ':')
+    // to uploaded file IDs.
     const uploadedArtifactId: Map<string, string> = new Map();
+
+    const performUpload = async (
+      filePath: string,
+      contentType: string = BINARY_CONTENT_TYPE
+    ): Promise<string> => {
+      const cacheKey = `${filePath}:${contentType}`;
+      const existingArtifactId = uploadedArtifactId.get(cacheKey);
+      if (existingArtifactId) {
+        return existingArtifactId;
+      }
+      const fileId = await uploadBuildArtifact(input, filePath, contentType);
+      uploadedArtifactId.set(cacheKey, fileId);
+      return fileId;
+    };
 
     for (const pattern of input.testCucumberPath) {
       for (const filePath of await glob(pattern)) {
-        const fileId = await uploadBuildArtifact(input, filePath);
+        const fileId = await performUpload(filePath, 'application/json');
         artifacts.push({ id: fileId, type: 'cucumber-json' });
-        uploadedArtifactId.set(filePath, fileId);
       }
     }
     for (const pattern of input.testJunitPath) {
       for (const filePath of await glob(pattern)) {
-        const fileId = await uploadBuildArtifact(
-          input,
-          filePath,
-          'application/xml'
-        );
+        const fileId = await performUpload(filePath, 'application/xml');
         artifacts.push({ id: fileId, type: 'junit-xml' });
-        uploadedArtifactId.set(filePath, fileId);
       }
     }
     for (const pattern of input.spdxJsonPath) {
       for (const filePath of await glob(pattern)) {
-        const fileId = await uploadBuildArtifact(input, filePath);
+        const fileId = await performUpload(filePath, 'application/json');
         artifacts.push({ id: fileId, type: 'spdx-json' });
-        uploadedArtifactId.set(filePath, fileId);
       }
     }
     for (const pattern of input.artifactPath) {
       const { path, contentType = BINARY_CONTENT_TYPE } =
         typeof pattern === 'string' ? { path: pattern } : pattern;
       for (const filePath of await glob(path)) {
-        if (!uploadedArtifactId.has(filePath)) {
-          const fileId = await uploadBuildArtifact(
-            input,
-            filePath,
-            contentType
-          );
-          artifacts.push({ id: fileId, type: 'artifact' });
-          uploadedArtifactId.set(filePath, fileId);
-        }
+        const fileId = await performUpload(filePath, contentType);
+        artifacts.push({ id: fileId, type: 'artifact' });
       }
     }
 
@@ -72,12 +73,7 @@ async function run(): Promise<void> {
         const { path, contentType = BINARY_CONTENT_TYPE } =
           typeof pattern === 'string' ? { path: pattern } : pattern;
         for (const filePath of await glob(path)) {
-          let fileId: string | undefined = uploadedArtifactId.get(filePath);
-          if (fileId === undefined) {
-            fileId = await uploadBuildArtifact(input, filePath, contentType);
-            uploadedArtifactId.set(filePath, fileId);
-          }
-
+          const fileId = await performUpload(filePath, contentType);
           testArtifacts.push({ id: fileId });
         }
       }

@@ -54,7 +54,7 @@ type BuildApiResponseData = {
 export async function uploadBuildArtifact(
   input: Pick<ActionInput, 'ketryxUrl' | 'project' | 'apiKey'>,
   filePath: string,
-  contentType = 'application/json'
+  contentType: string
 ): Promise<string> {
   const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
   url.searchParams.set('project', input.project);
