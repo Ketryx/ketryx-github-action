@@ -62,8 +62,16 @@ export function readActionInput(): ActionInput {
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
   const testJunitPath = core.getMultilineInput('test-junit-path');
-  const tests = YAML.parse(core.getInput('tests')) || [];
   const spdxJsonPath = core.getMultilineInput('spdx-json-path');
+
+  let tests: TestInput[] = [];
+  try {
+    tests = YAML.parse(core.getInput('tests')) || [];
+  } catch (error) {
+    throw new Error(
+      `Failed to parse input tests. Check if the input is valid YAML.\n${error}`
+    );
+  }
 
   const log = core.getInput('log');
 
