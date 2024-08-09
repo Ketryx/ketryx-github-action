@@ -9,6 +9,18 @@ export type ArtifactData = {
   type: 'artifact' | 'cucumber-json' | 'junit-xml' | 'spdx-json';
 };
 
+export type TestArtifactData = {
+  id: string;
+};
+
+export type TestData = {
+  testedItem: string;
+  result: 'pass' | 'fail' | 'PASS' | 'FAIL';
+  title: string;
+  log?: string;
+  artifacts?: Array<TestArtifactData>;
+};
+
 type BuildApiInputData = {
   project: string;
   version?: string;
@@ -19,12 +31,7 @@ type BuildApiInputData = {
   sourceUrl?: string;
   repositoryUrls?: string[];
   syncRepositoryUpdate?: boolean;
-  tests?: Array<{
-    testedItem: string;
-    result: 'PASS' | 'FAIL';
-    title: string;
-    log?: string;
-  }>;
+  tests?: Array<TestData>;
   artifacts?: Array<ArtifactData>;
   checkDependenciesStatus?: boolean;
   checkChangeRequestItemAssociation?: boolean;
@@ -47,7 +54,7 @@ type BuildApiResponseData = {
 export async function uploadBuildArtifact(
   input: Pick<ActionInput, 'ketryxUrl' | 'project' | 'apiKey'>,
   filePath: string,
-  contentType = 'application/json'
+  contentType: string
 ): Promise<string> {
   const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
   url.searchParams.set('project', input.project);
@@ -104,7 +111,8 @@ function getGitHubRunUrl(): string {
 
 export async function uploadBuild(
   input: ActionInput,
-  artifacts: ArtifactData[]
+  artifacts: ArtifactData[],
+  tests: TestData[]
 ): Promise<BuildApiResponseData> {
   const sourceUrl = getGitHubRunUrl();
   const repositoryUrl = getGitHubRepositoryUrl();
@@ -117,6 +125,7 @@ export async function uploadBuild(
     changeRequestNumber: input.changeRequestNumber,
     log: input.log,
     artifacts,
+    tests,
     sourceUrl,
     repositoryUrls: [repositoryUrl],
 

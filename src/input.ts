@@ -1,4 +1,13 @@
 import * as core from '@actions/core';
+import YAML from 'yaml';
+
+type TestInput = {
+  testedItem: string;
+  result: 'pass' | 'fail' | 'PASS' | 'FAIL';
+  title: string;
+  log?: string;
+  artifactPaths?: Array<string | { path: string; contentType?: string }>;
+};
 
 export type ActionInput = {
   ketryxUrl: string;
@@ -9,9 +18,10 @@ export type ActionInput = {
   changeRequestNumber?: number | null;
   buildName?: string;
   log?: string;
-  artifactPath: string[];
+  artifactPath: Array<string | { path: string; contentType?: string }>;
   testCucumberPath: string[];
   testJunitPath: string[];
+  tests: TestInput[];
   spdxJsonPath: string[];
   checkDependenciesStatus: boolean;
   checkChangeRequestItemAssociation: boolean;
@@ -54,6 +64,15 @@ export function readActionInput(): ActionInput {
   const testJunitPath = core.getMultilineInput('test-junit-path');
   const spdxJsonPath = core.getMultilineInput('spdx-json-path');
 
+  let tests: TestInput[] = [];
+  try {
+    tests = YAML.parse(core.getInput('tests')) || [];
+  } catch (error) {
+    throw new Error(
+      `Failed to parse input tests. Check if the input is valid YAML.\n${error}`
+    );
+  }
+
   const log = core.getInput('log');
 
   const checkDependenciesStatus = core.getBooleanInput(
@@ -80,6 +99,7 @@ export function readActionInput(): ActionInput {
     artifactPath,
     testCucumberPath,
     testJunitPath,
+    tests,
     spdxJsonPath,
     buildName,
     checkDependenciesStatus,
