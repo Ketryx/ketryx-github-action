@@ -85,6 +85,12 @@ export function readActionInput(): ActionInput {
   );
   const checkReleaseStatus = core.getBooleanInput('check-release-status');
 
+  if (version && commitSha) {
+    core.info(
+      'Both `version` and `commit-sha` are specified. The `commit-sha` parameter will be ignored.'
+    );
+  }
+
   return {
     ketryxUrl,
     project,
