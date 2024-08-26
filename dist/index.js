@@ -73,6 +73,9 @@ function readActionInput() {
     const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
     const checkChangeRequestItemAssociation = core.getBooleanInput('check-item-association');
     const checkReleaseStatus = core.getBooleanInput('check-release-status');
+    if (version && commitSha) {
+        core.info('Both `version` and `commit-sha` are specified. The `commit-sha` parameter will be ignored.');
+    }
     return {
         ketryxUrl,
         project,
