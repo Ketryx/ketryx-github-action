@@ -22,6 +22,7 @@ export type ActionInput = {
   testCucumberPath: string[];
   testJunitPath: string[];
   tests: TestInput[];
+  cycloneDxJsonPath: string[];
   spdxJsonPath: string[];
   checkDependenciesStatus: boolean;
   checkChangeRequestItemAssociation: boolean;
@@ -62,6 +63,7 @@ export function readActionInput(): ActionInput {
   const artifactPath = core.getMultilineInput('artifact-path');
   const testCucumberPath = core.getMultilineInput('test-cucumber-path');
   const testJunitPath = core.getMultilineInput('test-junit-path');
+  const cycloneDxJsonPath = core.getMultilineInput('cyclonedx-json-path');
   const spdxJsonPath = core.getMultilineInput('spdx-json-path');
 
   let tests: TestInput[] = [];
@@ -100,6 +102,7 @@ export function readActionInput(): ActionInput {
     testCucumberPath,
     testJunitPath,
     tests,
+    cycloneDxJsonPath,
     spdxJsonPath,
     buildName,
     checkDependenciesStatus,

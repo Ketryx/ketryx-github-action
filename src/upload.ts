@@ -6,7 +6,12 @@ import { hasProperty } from './util';
 
 export type ArtifactData = {
   id: string;
-  type: 'artifact' | 'cucumber-json' | 'junit-xml' | 'spdx-json';
+  type:
+    | 'artifact'
+    | 'cucumber-json'
+    | 'cyclonedx-json'
+    | 'junit-xml'
+    | 'spdx-json';
 };
 
 export type TestArtifactData = {
