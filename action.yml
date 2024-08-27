@@ -51,6 +51,9 @@ inputs:
         log: <Log text to store with the test (optional)>
         artifactPaths: <List glob patterns for artifact paths>
       ```
+  cyclonedx-json-path:
+    required: false
+    description: 'Paths (newline-separated glob patterns) of CycloneDX JSON files'
   spdx-json-path:
     required: false
     description: 'Paths (newline-separated glob patterns) of SPDX JSON files'

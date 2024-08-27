@@ -61,6 +61,7 @@ function readActionInput() {
     const artifactPath = core.getMultilineInput('artifact-path');
     const testCucumberPath = core.getMultilineInput('test-cucumber-path');
     const testJunitPath = core.getMultilineInput('test-junit-path');
+    const cycloneDxJsonPath = core.getMultilineInput('cyclonedx-json-path');
     const spdxJsonPath = core.getMultilineInput('spdx-json-path');
     let tests = [];
     try {
@@ -91,6 +92,7 @@ function readActionInput() {
         testCucumberPath,
         testJunitPath,
         tests,
+        cycloneDxJsonPath,
         spdxJsonPath,
         buildName,
         checkDependenciesStatus,
@@ -180,6 +182,12 @@ function run() {
                 for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
                     const fileId = yield performUpload(filePath, 'application/xml');
                     artifacts.push({ id: fileId, type: 'junit-xml' });
+                }
+            }
+            for (const pattern of input.cycloneDxJsonPath) {
+                for (const filePath of yield (0, glob_promise_1.default)(pattern)) {
+                    const fileId = yield performUpload(filePath, 'application/json');
+                    artifacts.push({ id: fileId, type: 'cyclonedx-json' });
                 }
             }
             for (const pattern of input.spdxJsonPath) {

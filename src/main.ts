@@ -51,6 +51,12 @@ async function run(): Promise<void> {
         artifacts.push({ id: fileId, type: 'junit-xml' });
       }
     }
+    for (const pattern of input.cycloneDxJsonPath) {
+      for (const filePath of await glob(pattern)) {
+        const fileId = await performUpload(filePath, 'application/json');
+        artifacts.push({ id: fileId, type: 'cyclonedx-json' });
+      }
+    }
     for (const pattern of input.spdxJsonPath) {
       for (const filePath of await glob(pattern)) {
         const fileId = await performUpload(filePath, 'application/json');
