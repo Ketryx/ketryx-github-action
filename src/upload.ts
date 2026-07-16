@@ -1,4 +1,4 @@
-import fetch, { fileFrom, FormData } from 'node-fetch';
+import fs from 'node:fs';
 import path from 'node:path';
 import * as core from '@actions/core';
 import type { ActionInput } from './input';
@@ -65,7 +65,7 @@ export async function uploadBuildArtifact(
   url.searchParams.set('project', input.project);
   const urlString = url.toString();
   const formData = new FormData();
-  const file = await fileFrom(filePath, contentType);
+  const file = await fs.openAsBlob(filePath, { type: contentType });
   formData.set('file', file, path.basename(filePath));
 
   core.debug(`Sending request to ${urlString}`);
