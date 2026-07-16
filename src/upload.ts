@@ -85,6 +85,20 @@ async function fetchWithContext(
   }
 }
 
+async function readJsonResponse(
+  urlString: string,
+  response: Awaited<ReturnType<typeof fetch>>
+): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch (error) {
+    throw new Error(
+      `Unexpected non-JSON response from ${urlString} (status ${response.status}): ${error}`,
+      { cause: error }
+    );
+  }
+}
+
 export async function uploadBuildArtifact(
   input: Pick<ActionInput, 'ketryxUrl' | 'project' | 'apiKey'>,
   filePath: string,
@@ -112,7 +126,7 @@ export async function uploadBuildArtifact(
     );
   }
 
-  const responseData = await response.json();
+  const responseData = await readJsonResponse(urlString, response);
   if (hasProperty(responseData, 'id') && typeof responseData.id === 'string') {
     return responseData.id;
   }
@@ -190,14 +204,21 @@ export async function uploadBuild(
       contentType === 'application/json' ||
       contentType?.startsWith('application/json;')
     ) {
-      const responseData = (await response.json()) as BuildApiResponseData;
-      core.debug(
-        `Received response status ${response.status}, JSON ${JSON.stringify(
-          responseData
-        )}`
-      );
-      if (responseData.error) {
-        error = responseData.error;
+      // A malformed body must not mask the error status we already know.
+      try {
+        const responseData = (await response.json()) as BuildApiResponseData;
+        core.debug(
+          `Received response status ${response.status}, JSON ${JSON.stringify(
+            responseData
+          )}`
+        );
+        if (responseData.error) {
+          error = responseData.error;
+        }
+      } catch (parseError) {
+        core.debug(
+          `Failed to parse JSON error response from ${urlString}: ${parseError}`
+        );
       }
     } else {
       core.debug(
@@ -208,7 +229,10 @@ export async function uploadBuild(
     }
     return { ok: false, error };
   }
-  const responseData = (await response.json()) as BuildApiResponseData;
+  const responseData = (await readJsonResponse(
+    urlString,
+    response
+  )) as BuildApiResponseData;
   core.debug(`Received response ${JSON.stringify(responseData)}`);
   return responseData;
 }

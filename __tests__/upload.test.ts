@@ -136,6 +136,14 @@ describe('uploadBuildArtifact', () => {
       uploadBuildArtifact(baseInput(), filePath, 'application/json')
     ).rejects.toThrow('Unexpected response data');
   });
+
+  test('reports URL and status when a 200 response is not JSON', async () => {
+    nextResponse = { status: 200, body: '<html>SSO login</html>' };
+
+    await expect(
+      uploadBuildArtifact(baseInput(), filePath, 'application/json')
+    ).rejects.toThrow(/\/api\/v1\/build-artifacts\?project=test-project.*200/);
+  });
 });
 
 describe('uploadBuild', () => {
@@ -223,6 +231,22 @@ describe('uploadBuild', () => {
     const result = await uploadBuild(baseInput(), [], []);
 
     expect(result).toEqual({ ok: false, error: 'Error status 500' });
+  });
+
+  test('reports URL and status when a 200 response is not JSON', async () => {
+    nextResponse = { status: 200, body: '<html>SSO login</html>' };
+
+    await expect(uploadBuild(baseInput(), [], [])).rejects.toThrow(
+      /\/api\/v1\/builds.*200/
+    );
+  });
+
+  test('degrades to the generic error when a JSON error response is malformed', async () => {
+    nextResponse = { status: 400, body: '<html>not json after all</html>' };
+
+    const result = await uploadBuild(baseInput(), [], []);
+
+    expect(result).toEqual({ ok: false, error: 'Error status 400' });
   });
 
   test('reports the URL and cause when the server is unreachable', async () => {
