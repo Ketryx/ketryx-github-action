@@ -71,9 +71,16 @@ afterAll(async () => {
   });
 });
 
+let warning: ReturnType<typeof vi.spyOn>;
+
 beforeEach(() => {
   requests = [];
   nextResponse = { status: 200, body: '{}' };
+  warning = vi.spyOn(core, 'warning').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 function baseInput(): ActionInput {
@@ -137,6 +144,17 @@ describe('uploadBuildArtifact', () => {
     ).rejects.toThrow('status 403');
   });
 
+  test('includes the server-reported error when the upload is rejected', async () => {
+    nextResponse = {
+      status: 403,
+      body: JSON.stringify({ error: 'Invalid API key' }),
+    };
+
+    await expect(
+      uploadBuildArtifact(baseInput(), filePath, 'application/json')
+    ).rejects.toThrow('Invalid API key');
+  });
+
   test('throws if the response contains no file ID', async () => {
     nextResponse = { status: 200, body: JSON.stringify({ unexpected: true }) };
 
@@ -179,19 +197,16 @@ describe('uploadBuildArtifact', () => {
 
 describe('uploadBuild', () => {
   let savedEnv: NodeJS.ProcessEnv;
-  let warning: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     savedEnv = { ...process.env };
     process.env.GITHUB_SERVER_URL = 'https://github.com';
     process.env.GITHUB_REPOSITORY = 'ketryx/example';
     process.env.GITHUB_RUN_ID = '12345';
-    warning = vi.spyOn(core, 'warning').mockImplementation(() => {});
   });
 
   afterEach(() => {
     process.env = savedEnv;
-    vi.restoreAllMocks();
   });
 
   test('posts build data as JSON and returns the response data', async () => {

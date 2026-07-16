@@ -76,9 +76,7 @@ async function fetchWithContext(
     return await fetch(urlString, init);
   } catch (error) {
     const cause =
-      error instanceof Error &&
-      error.cause !== undefined &&
-      error.cause !== null
+      error instanceof Error && error.cause != null
         ? `: ${describeError(error.cause)}`
         : '';
     throw new Error(`Request to ${urlString} failed${cause}`, {
@@ -89,7 +87,7 @@ async function fetchWithContext(
 
 async function readJsonResponse(
   urlString: string,
-  response: Awaited<ReturnType<typeof fetch>>
+  response: Response
 ): Promise<unknown> {
   try {
     return await response.json();
@@ -99,6 +97,59 @@ async function readJsonResponse(
       { cause: error }
     );
   }
+}
+
+// Extracts the most useful error description from a non-200 response: the
+// server-reported error message if the body contains one, otherwise a
+// generic status error. The body may come from an intercepting proxy or SSO
+// gateway and can contain sensitive content, so the visible warning carries
+// metadata only; the (truncated) body stays in opt-in debug logs.
+async function readErrorMessage(
+  urlString: string,
+  response: Response
+): Promise<string> {
+  let bodyText = '';
+  try {
+    bodyText = await response.text();
+  } catch (readError) {
+    core.debug(
+      `Failed to read error response body from ${urlString}: ${readError}`
+    );
+  }
+
+  let serverError: string | undefined;
+  try {
+    const responseData = JSON.parse(bodyText) as BuildApiResponseData;
+    core.debug(
+      `Received response status ${response.status}, JSON ${JSON.stringify(
+        responseData
+      )}`
+    );
+    serverError = responseData.error;
+  } catch (parseError) {
+    core.debug(
+      `Failed to parse error response from ${urlString}: ${parseError}`
+    );
+  }
+
+  if (serverError) {
+    return serverError;
+  }
+
+  core.warning(
+    `Ketryx returned status ${response.status} from ${urlString} without a readable ` +
+      `error message (content-type ${
+        response.headers.get('content-type') || 'unspecified'
+      }, ${Buffer.byteLength(bodyText)} bytes). ` +
+      'Enable ACTIONS_STEP_DEBUG and re-run for details.'
+  );
+  core.debug(
+    `Error response body from ${urlString} (truncated): ${bodyText.slice(
+      0,
+      512
+    )}`
+  );
+  return `Error status ${response.status}`;
 }
 
 export async function uploadBuildArtifact(
@@ -124,7 +175,10 @@ export async function uploadBuildArtifact(
 
   if (response.status !== 200) {
     throw new Error(
-      `Error uploading build artifact to ${urlString}: status ${response.status}`
+      `Error uploading build artifact to ${urlString}: ${await readErrorMessage(
+        urlString,
+        response
+      )}`
     );
   }
 
@@ -200,61 +254,7 @@ export async function uploadBuild(
     },
   });
   if (response.status !== 200) {
-    const contentType = response.headers.get('content-type') || 'unspecified';
-    let bodyText = '';
-    try {
-      bodyText = await response.text();
-    } catch (readError) {
-      core.debug(
-        `Failed to read error response body from ${urlString}: ${readError}`
-      );
-    }
-
-    let serverError: string | undefined;
-    if (
-      contentType === 'application/json' ||
-      contentType.startsWith('application/json;')
-    ) {
-      // A malformed body must not mask the error status we already know.
-      try {
-        const responseData = JSON.parse(bodyText) as BuildApiResponseData;
-        core.debug(
-          `Received response status ${response.status}, JSON ${JSON.stringify(
-            responseData
-          )}`
-        );
-        if (responseData.error) {
-          serverError = responseData.error;
-        }
-      } catch (parseError) {
-        core.debug(
-          `Failed to parse JSON error response from ${urlString}: ${parseError}`
-        );
-      }
-    }
-
-    if (!serverError) {
-      // The body may come from an intercepting proxy or SSO gateway and can
-      // contain sensitive content, so the visible warning carries metadata
-      // only; the (truncated) body stays in opt-in debug logs.
-      core.warning(
-        `Ketryx returned status ${response.status} from ${urlString} without a readable ` +
-          `error message (content-type ${contentType}, ${Buffer.byteLength(
-            bodyText
-          )} bytes). Enable ACTIONS_STEP_DEBUG and re-run for details.`
-      );
-      core.debug(
-        `Error response body from ${urlString} (truncated): ${bodyText.slice(
-          0,
-          512
-        )}`
-      );
-    }
-
-    return {
-      ok: false,
-      error: serverError || `Error status ${response.status}`,
-    };
+    return { ok: false, error: await readErrorMessage(urlString, response) };
   }
   const responseData = (await readJsonResponse(
     urlString,
