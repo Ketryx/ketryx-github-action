@@ -345,7 +345,9 @@ async function fetchWithContext(urlString, init) {
         return await fetch(urlString, init);
     }
     catch (error) {
-        const cause = error instanceof Error && error.cause !== undefined
+        const cause = error instanceof Error &&
+            error.cause !== undefined &&
+            error.cause !== null
             ? `: ${describeError(error.cause)}`
             : '';
         throw new Error(`Request to ${urlString} failed${cause}`, {
@@ -439,26 +441,41 @@ async function uploadBuild(input, artifacts, tests) {
         },
     });
     if (response.status !== 200) {
-        let error = `Error status ${response.status}`;
-        const contentType = response.headers.get('content-type');
+        const contentType = response.headers.get('content-type') || 'unspecified';
+        let bodyText = '';
+        try {
+            bodyText = await response.text();
+        }
+        catch (readError) {
+            core.debug(`Failed to read error response body from ${urlString}: ${readError}`);
+        }
+        let serverError;
         if (contentType === 'application/json' ||
-            contentType?.startsWith('application/json;')) {
+            contentType.startsWith('application/json;')) {
             // A malformed body must not mask the error status we already know.
             try {
-                const responseData = (await response.json());
+                const responseData = JSON.parse(bodyText);
                 core.debug(`Received response status ${response.status}, JSON ${JSON.stringify(responseData)}`);
                 if (responseData.error) {
-                    error = responseData.error;
+                    serverError = responseData.error;
                 }
             }
             catch (parseError) {
                 core.debug(`Failed to parse JSON error response from ${urlString}: ${parseError}`);
             }
         }
-        else {
-            core.debug(`Received response status ${response.status}, type ${contentType || 'unspecified'}`);
+        if (!serverError) {
+            // The body may come from an intercepting proxy or SSO gateway and can
+            // contain sensitive content, so the visible warning carries metadata
+            // only; the (truncated) body stays in opt-in debug logs.
+            core.warning(`Ketryx returned status ${response.status} from ${urlString} without a readable ` +
+                `error message (content-type ${contentType}, ${Buffer.byteLength(bodyText)} bytes). Enable ACTIONS_STEP_DEBUG and re-run for details.`);
+            core.debug(`Error response body from ${urlString} (truncated): ${bodyText.slice(0, 512)}`);
         }
-        return { ok: false, error };
+        return {
+            ok: false,
+            error: serverError || `Error status ${response.status}`,
+        };
     }
     const responseData = (await readJsonResponse(urlString, response));
     core.debug(`Received response ${JSON.stringify(responseData)}`);
