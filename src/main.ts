@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import glob from 'glob-promise';
+import { glob } from 'glob';
 import { readActionInput } from './input';
 import {
   ArtifactData,
