@@ -2,6 +2,10 @@
 
 This GitHub Action reports builds and test results to [Ketryx](https://www.ketryx.com/) via the [build API](https://docs.ketryx.com/api/build-api).
 
+## Requirements
+
+Version 2 of this action runs on Node.js 24. This is supported out of the box on GitHub-hosted runners; self-hosted runners need [actions/runner](https://github.com/actions/runner) v2.327.1 or later. On older runners, use `Ketryx/ketryx-github-action@v1`.
+
 ## Usage
 
 The examples below show some common use cases.
@@ -12,7 +16,7 @@ Also refer to the [documentation on workflow YAML syntax](https://help.github.co
 
 ```yaml
 - name: Report build to Ketryx
-  uses: Ketryx/ketryx-github-action
+  uses: Ketryx/ketryx-github-action@v2
   with:
     project: ${{ secrets.KETRYX_PROJECT }}
     api-key: ${{ secrets.KETRYX_API_KEY }}
@@ -30,7 +34,7 @@ Read [this documentation](https://docs.ketryx.com/manuals/man-06-test-management
 
 ```yaml
 - name: Report build to Ketryx
-  uses: Ketryx/ketryx-github-action
+  uses: Ketryx/ketryx-github-action@v2
   with:
     project: ${{ secrets.KETRYX_PROJECT }}
     api-key: ${{ secrets.KETRYX_API_KEY }}
@@ -42,7 +46,7 @@ Read [this documentation](https://docs.ketryx.com/manuals/man-06-test-management
 
 ```yaml
 - name: Report build to Ketryx
-  uses: Ketryx/ketryx-github-action
+  uses: Ketryx/ketryx-github-action@v2
   with:
     project: ${{ secrets.KETRYX_PROJECT }}
     api-key: ${{ secrets.KETRYX_API_KEY }}
@@ -54,7 +58,7 @@ Read [this documentation](https://docs.ketryx.com/manuals/man-06-test-management
 
 ```yaml
 - name: Report build to Ketryx
-  uses: Ketryx/ketryx-github-action
+  uses: Ketryx/ketryx-github-action@v2
   with:
     project: ${{ secrets.KETRYX_PROJECT }}
     api-key: ${{ secrets.KETRYX_API_KEY }}
@@ -71,7 +75,7 @@ Read [this documentation](https://docs.ketryx.com/manuals/man-06-test-management
 
 ```yaml
 - name: Check dependency approval status
-  uses: Ketryx/ketryx-github-action
+  uses: Ketryx/ketryx-github-action@v2
   with:
     project: ${{ secrets.KETRYX_PROJECT }}
     api-key: ${{ secrets.KETRYX_API_KEY }}
@@ -82,7 +86,7 @@ Read [this documentation](https://docs.ketryx.com/manuals/man-06-test-management
 
 ```yaml
 - name: Check dependency approval status
-  uses: Ketryx/ketryx-github-action
+  uses: Ketryx/ketryx-github-action@v2
   with:
     project: ${{ secrets.KETRYX_PROJECT }}
     api-key: ${{ secrets.KETRYX_API_KEY }}
