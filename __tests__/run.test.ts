@@ -29,6 +29,7 @@ let serverUrl: string;
 let uploads: UploadedArtifact[];
 let buildRequests: string[];
 let buildResponse: object;
+let artifactUploadStatus: number;
 
 beforeAll(async () => {
   server = http.createServer((req, res) => {
@@ -36,14 +37,21 @@ beforeAll(async () => {
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
       const body = Buffer.concat(chunks).toString('utf8');
-      res.writeHead(200, { 'content-type': 'application/json' });
       if (req.url?.startsWith('/api/v1/build-artifacts')) {
+        res.writeHead(artifactUploadStatus, {
+          'content-type': 'application/json',
+        });
+        if (artifactUploadStatus !== 200) {
+          res.end('{}');
+          return;
+        }
         uploads.push({
           filename: /filename="([^"]+)"/.exec(body)?.[1] ?? '',
           partContentType: /Content-Type: (\S+)/.exec(body)?.[1] ?? '',
         });
         res.end(JSON.stringify({ id: `file-${uploads.length}` }));
       } else {
+        res.writeHead(200, { 'content-type': 'application/json' });
         buildRequests.push(body);
         res.end(JSON.stringify(buildResponse));
       }
@@ -90,6 +98,7 @@ beforeEach(async () => {
   uploads = [];
   buildRequests = [];
   buildResponse = { ok: true, buildId: 'build-1', projectId: 'proj-1' };
+  artifactUploadStatus = 200;
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ketryx-run-test-'));
 
   setOutput = vi.spyOn(core, 'setOutput').mockImplementation(() => {});
@@ -183,6 +192,20 @@ test('uploads a file only once when patterns overlap', async () => {
     { id: 'file-1', type: 'junit-xml' },
     { id: 'file-1', type: 'junit-xml' },
   ]);
+});
+
+test('fails the action and sets outputs when an upload throws', async () => {
+  await fs.writeFile(path.join(tmpDir, 'junit-1.xml'), '<testsuite/>');
+  setInput('test-junit-path', `${tmpDir}/junit-1.xml`);
+  artifactUploadStatus = 500;
+
+  await run();
+
+  // A thrown failure must produce the same output contract as a
+  // server-rejected build: downstream steps read outputs.ok/error.
+  expect(setFailed).toHaveBeenCalledWith(expect.stringContaining('status 500'));
+  expect(outputValue('ok')).toBe(false);
+  expect(outputValue('error')).toEqual(expect.stringContaining('status 500'));
 });
 
 test('fails the action and sets outputs when the server rejects the build', async () => {

@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import * as core from '@actions/core';
 import { glob } from 'glob';
 import { readActionInput } from './input';
@@ -108,9 +109,15 @@ export async function run(): Promise<void> {
     core.setOutput('error', buildData.error);
     core.setOutput('build-id', buildData.buildId);
   } catch (error) {
-    core.debug(`Encountered error ${error}`);
-    if (error instanceof Error) {
-      core.setFailed(error.message);
-    }
+    // inspect renders error.cause chains; string interpolation does not.
+    core.debug(`Encountered error ${inspect(error, { depth: 5 })}`);
+    const message = error instanceof Error ? error.message : String(error);
+    core.setFailed(message);
+
+    // Keep the output contract consistent with the {ok: false} branch
+    // above, so downstream steps can rely on outputs.ok and outputs.error
+    // regardless of how the action failed.
+    core.setOutput('ok', false);
+    core.setOutput('error', message);
   }
 }
