@@ -202,28 +202,34 @@ async function run() {
             uploadedArtifactId.set(cacheKey, fileId);
             return fileId;
         };
-        for (const pattern of input.testCucumberPath) {
-            for (const filePath of await (0, glob_1.glob)(pattern)) {
-                const fileId = await performUpload(filePath, 'application/json');
-                artifacts.push({ id: fileId, type: 'cucumber-json' });
-            }
-        }
-        for (const pattern of input.testJunitPath) {
-            for (const filePath of await (0, glob_1.glob)(pattern)) {
-                const fileId = await performUpload(filePath, 'application/xml');
-                artifacts.push({ id: fileId, type: 'junit-xml' });
-            }
-        }
-        for (const pattern of input.cycloneDxJsonPath) {
-            for (const filePath of await (0, glob_1.glob)(pattern)) {
-                const fileId = await performUpload(filePath, 'application/json');
-                artifacts.push({ id: fileId, type: 'cyclonedx-json' });
-            }
-        }
-        for (const pattern of input.spdxJsonPath) {
-            for (const filePath of await (0, glob_1.glob)(pattern)) {
-                const fileId = await performUpload(filePath, 'application/json');
-                artifacts.push({ id: fileId, type: 'spdx-json' });
+        const artifactKinds = [
+            {
+                patterns: input.testCucumberPath,
+                contentType: 'application/json',
+                type: 'cucumber-json',
+            },
+            {
+                patterns: input.testJunitPath,
+                contentType: 'application/xml',
+                type: 'junit-xml',
+            },
+            {
+                patterns: input.cycloneDxJsonPath,
+                contentType: 'application/json',
+                type: 'cyclonedx-json',
+            },
+            {
+                patterns: input.spdxJsonPath,
+                contentType: 'application/json',
+                type: 'spdx-json',
+            },
+        ];
+        for (const { patterns, contentType, type } of artifactKinds) {
+            for (const pattern of patterns) {
+                for (const filePath of await (0, glob_1.glob)(pattern)) {
+                    const fileId = await performUpload(filePath, contentType);
+                    artifacts.push({ id: fileId, type });
+                }
             }
         }
         for (const pattern of input.artifactPath) {
@@ -345,9 +351,7 @@ async function fetchWithContext(urlString, init) {
         return await fetch(urlString, init);
     }
     catch (error) {
-        const cause = error instanceof Error &&
-            error.cause !== undefined &&
-            error.cause !== null
+        const cause = error instanceof Error && error.cause != null
             ? `: ${describeError(error.cause)}`
             : '';
         throw new Error(`Request to ${urlString} failed${cause}`, {
@@ -362,6 +366,37 @@ async function readJsonResponse(urlString, response) {
     catch (error) {
         throw new Error(`Unexpected non-JSON response from ${urlString} (status ${response.status}): ${error}`, { cause: error });
     }
+}
+// Extracts the most useful error description from a non-200 response: the
+// server-reported error message if the body contains one, otherwise a
+// generic status error. The body may come from an intercepting proxy or SSO
+// gateway and can contain sensitive content, so the visible warning carries
+// metadata only; the (truncated) body stays in opt-in debug logs.
+async function readErrorMessage(urlString, response) {
+    let bodyText = '';
+    try {
+        bodyText = await response.text();
+    }
+    catch (readError) {
+        core.debug(`Failed to read error response body from ${urlString}: ${readError}`);
+    }
+    let serverError;
+    try {
+        const responseData = JSON.parse(bodyText);
+        core.debug(`Received response status ${response.status}, JSON ${JSON.stringify(responseData)}`);
+        serverError = responseData.error;
+    }
+    catch (parseError) {
+        core.debug(`Failed to parse error response from ${urlString}: ${parseError}`);
+    }
+    if (serverError) {
+        return serverError;
+    }
+    core.warning(`Ketryx returned status ${response.status} from ${urlString} without a readable ` +
+        `error message (content-type ${response.headers.get('content-type') || 'unspecified'}, ${Buffer.byteLength(bodyText)} bytes). ` +
+        'Enable ACTIONS_STEP_DEBUG and re-run for details.');
+    core.debug(`Error response body from ${urlString} (truncated): ${bodyText.slice(0, 512)}`);
+    return `Error status ${response.status}`;
 }
 async function uploadBuildArtifact(input, filePath, contentType) {
     const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
@@ -379,7 +414,7 @@ async function uploadBuildArtifact(input, filePath, contentType) {
         },
     });
     if (response.status !== 200) {
-        throw new Error(`Error uploading build artifact to ${urlString}: status ${response.status}`);
+        throw new Error(`Error uploading build artifact to ${urlString}: ${await readErrorMessage(urlString, response)}`);
     }
     const responseData = await readJsonResponse(urlString, response);
     if ((0, util_1.hasProperty)(responseData, 'id') && typeof responseData.id === 'string') {
@@ -441,41 +476,7 @@ async function uploadBuild(input, artifacts, tests) {
         },
     });
     if (response.status !== 200) {
-        const contentType = response.headers.get('content-type') || 'unspecified';
-        let bodyText = '';
-        try {
-            bodyText = await response.text();
-        }
-        catch (readError) {
-            core.debug(`Failed to read error response body from ${urlString}: ${readError}`);
-        }
-        let serverError;
-        if (contentType === 'application/json' ||
-            contentType.startsWith('application/json;')) {
-            // A malformed body must not mask the error status we already know.
-            try {
-                const responseData = JSON.parse(bodyText);
-                core.debug(`Received response status ${response.status}, JSON ${JSON.stringify(responseData)}`);
-                if (responseData.error) {
-                    serverError = responseData.error;
-                }
-            }
-            catch (parseError) {
-                core.debug(`Failed to parse JSON error response from ${urlString}: ${parseError}`);
-            }
-        }
-        if (!serverError) {
-            // The body may come from an intercepting proxy or SSO gateway and can
-            // contain sensitive content, so the visible warning carries metadata
-            // only; the (truncated) body stays in opt-in debug logs.
-            core.warning(`Ketryx returned status ${response.status} from ${urlString} without a readable ` +
-                `error message (content-type ${contentType}, ${Buffer.byteLength(bodyText)} bytes). Enable ACTIONS_STEP_DEBUG and re-run for details.`);
-            core.debug(`Error response body from ${urlString} (truncated): ${bodyText.slice(0, 512)}`);
-        }
-        return {
-            ok: false,
-            error: serverError || `Error status ${response.status}`,
-        };
+        return { ok: false, error: await readErrorMessage(urlString, response) };
     }
     const responseData = (await readJsonResponse(urlString, response));
     core.debug(`Received response ${JSON.stringify(responseData)}`);
