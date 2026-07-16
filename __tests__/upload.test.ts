@@ -224,4 +224,26 @@ describe('uploadBuild', () => {
 
     expect(result).toEqual({ ok: false, error: 'Error status 500' });
   });
+
+  test('reports the URL and cause when the server is unreachable', async () => {
+    // Grab a port that is guaranteed to be closed.
+    const probe = http.createServer();
+    await new Promise<void>((resolve) => {
+      probe.listen(0, '127.0.0.1', resolve);
+    });
+    const closedPort = (probe.address() as AddressInfo).port;
+    await new Promise((resolve) => probe.close(resolve));
+
+    const input: ActionInput = {
+      ...baseInput(),
+      ketryxUrl: `http://127.0.0.1:${closedPort}`,
+    };
+
+    // Native fetch fails with a bare "fetch failed" TypeError; the error
+    // surfaced to the user must carry the URL and the underlying cause.
+    await expect(uploadBuild(input, [], [])).rejects.toThrow(
+      new RegExp(`http://127\\.0\\.0\\.1:${closedPort}/api/v1/builds`)
+    );
+    await expect(uploadBuild(input, [], [])).rejects.toThrow(/ECONNREFUSED/);
+  });
 });

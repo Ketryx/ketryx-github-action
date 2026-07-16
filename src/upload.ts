@@ -56,6 +56,35 @@ type BuildApiResponseData = {
   versionsReleased?: boolean | null;
 };
 
+function describeError(error: unknown): string {
+  // Aggregated connection errors (e.g. from trying multiple addresses)
+  // often carry an empty message; their parts are more informative.
+  if (error instanceof AggregateError && error.errors.length > 0) {
+    return error.errors.map(String).join('; ');
+  }
+  return String(error);
+}
+
+// Native fetch rejects with a bare "fetch failed" TypeError and hides the
+// actual reason (DNS, connection, TLS, ...) in error.cause; unwrap it so
+// failures surface with actionable context.
+async function fetchWithContext(
+  urlString: string,
+  init: Parameters<typeof fetch>[1]
+): Promise<Response> {
+  try {
+    return await fetch(urlString, init);
+  } catch (error) {
+    const cause =
+      error instanceof Error && error.cause !== undefined
+        ? `: ${describeError(error.cause)}`
+        : '';
+    throw new Error(`Request to ${urlString} failed${cause}`, {
+      cause: error,
+    });
+  }
+}
+
 export async function uploadBuildArtifact(
   input: Pick<ActionInput, 'ketryxUrl' | 'project' | 'apiKey'>,
   filePath: string,
@@ -69,7 +98,7 @@ export async function uploadBuildArtifact(
   formData.set('file', file, path.basename(filePath));
 
   core.debug(`Sending request to ${urlString}`);
-  const response = await fetch(urlString, {
+  const response = await fetchWithContext(urlString, {
     method: 'post',
     body: formData,
     headers: {
@@ -146,7 +175,7 @@ export async function uploadBuild(
   const urlString = url.toString();
 
   core.debug(`Sending request to ${urlString}: ${JSON.stringify(data)}`);
-  const response = await fetch(urlString, {
+  const response = await fetchWithContext(urlString, {
     method: 'post',
     body: JSON.stringify(data),
     headers: {
