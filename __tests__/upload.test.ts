@@ -277,14 +277,7 @@ describe('uploadBuild', () => {
   });
 
   test('reports the URL and cause when the server is unreachable', async () => {
-    // Grab a port that is guaranteed to be closed.
-    const probe = http.createServer();
-    await new Promise<void>((resolve) => {
-      probe.listen(0, '127.0.0.1', resolve);
-    });
-    const closedPort = (probe.address() as AddressInfo).port;
-    await new Promise((resolve) => probe.close(resolve));
-
+    const closedPort = await getClosedPort();
     const input: ActionInput = {
       ...baseInput(),
       ketryxUrl: `http://127.0.0.1:${closedPort}`,
@@ -297,4 +290,33 @@ describe('uploadBuild', () => {
     );
     await expect(uploadBuild(input, [], [])).rejects.toThrow(/ECONNREFUSED/);
   });
+
+  test('reports connection details for unreachable hostnames', async () => {
+    const closedPort = await getClosedPort();
+
+    // 'localhost' usually resolves to both ::1 and 127.0.0.1; the connection
+    // failure then surfaces as an AggregateError whose own message is empty,
+    // and describeError must dig the ECONNREFUSED parts out of its errors.
+    // (In single-address environments the cause is a plain Error and this
+    // still passes.)
+    const input: ActionInput = {
+      ...baseInput(),
+      ketryxUrl: `http://localhost:${closedPort}`,
+    };
+
+    await expect(uploadBuild(input, [], [])).rejects.toThrow(/ECONNREFUSED/);
+  });
 });
+
+// Returns a port that was just released and is almost certainly closed.
+async function getClosedPort(): Promise<number> {
+  const probe = http.createServer();
+  await new Promise<void>((resolve) => {
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const port = (probe.address() as AddressInfo).port;
+  await new Promise<void>((resolve, reject) => {
+    probe.close((err) => (err ? reject(err) : resolve()));
+  });
+  return port;
+}
