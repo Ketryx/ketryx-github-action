@@ -114,7 +114,7 @@ function readActionInput() {
 
 /***/ }),
 
-/***/ 5915:
+/***/ 8065:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -153,6 +153,8 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = run;
+const node_util_1 = __nccwpck_require__(7975);
 const core = __importStar(__nccwpck_require__(7484));
 const glob_1 = __nccwpck_require__(1363);
 const input_1 = __nccwpck_require__(2868);
@@ -242,13 +244,17 @@ async function run() {
         core.setOutput('build-id', buildData.buildId);
     }
     catch (error) {
-        core.debug(`Encountered error ${error}`);
-        if (error instanceof Error) {
-            core.setFailed(error.message);
-        }
+        // inspect renders error.cause chains; string interpolation does not.
+        core.debug(`Encountered error ${(0, node_util_1.inspect)(error, { depth: 5 })}`);
+        const message = error instanceof Error ? error.message : String(error);
+        core.setFailed(message);
+        // Keep the output contract consistent with the {ok: false} branch
+        // above, so downstream steps can rely on outputs.ok and outputs.error
+        // regardless of how the action failed.
+        core.setOutput('ok', false);
+        core.setOutput('error', message);
     }
 }
-run();
 
 
 /***/ }),
@@ -301,6 +307,38 @@ const node_fs_1 = __importDefault(__nccwpck_require__(3024));
 const node_path_1 = __importDefault(__nccwpck_require__(6760));
 const core = __importStar(__nccwpck_require__(7484));
 const util_1 = __nccwpck_require__(7030);
+function describeError(error) {
+    // Aggregated connection errors (e.g. from trying multiple addresses)
+    // often carry an empty message; their parts are more informative.
+    if (error instanceof AggregateError && error.errors.length > 0) {
+        return error.errors.map(String).join('; ');
+    }
+    return String(error);
+}
+// Native fetch rejects with a bare "fetch failed" TypeError and hides the
+// actual reason (DNS, connection, TLS, ...) in error.cause; unwrap it so
+// failures surface with actionable context.
+async function fetchWithContext(urlString, init) {
+    try {
+        return await fetch(urlString, init);
+    }
+    catch (error) {
+        const cause = error instanceof Error && error.cause !== undefined
+            ? `: ${describeError(error.cause)}`
+            : '';
+        throw new Error(`Request to ${urlString} failed${cause}`, {
+            cause: error,
+        });
+    }
+}
+async function readJsonResponse(urlString, response) {
+    try {
+        return await response.json();
+    }
+    catch (error) {
+        throw new Error(`Unexpected non-JSON response from ${urlString} (status ${response.status}): ${error}`, { cause: error });
+    }
+}
 async function uploadBuildArtifact(input, filePath, contentType) {
     const url = new URL('/api/v1/build-artifacts', input.ketryxUrl);
     url.searchParams.set('project', input.project);
@@ -309,7 +347,7 @@ async function uploadBuildArtifact(input, filePath, contentType) {
     const file = await node_fs_1.default.openAsBlob(filePath, { type: contentType });
     formData.set('file', file, node_path_1.default.basename(filePath));
     core.debug(`Sending request to ${urlString}`);
-    const response = await fetch(urlString, {
+    const response = await fetchWithContext(urlString, {
         method: 'post',
         body: formData,
         headers: {
@@ -319,7 +357,7 @@ async function uploadBuildArtifact(input, filePath, contentType) {
     if (response.status !== 200) {
         throw new Error(`Error uploading build artifact to ${urlString}: status ${response.status}`);
     }
-    const responseData = await response.json();
+    const responseData = await readJsonResponse(urlString, response);
     if ((0, util_1.hasProperty)(responseData, 'id') && typeof responseData.id === 'string') {
         return responseData.id;
     }
@@ -370,7 +408,7 @@ async function uploadBuild(input, artifacts, tests) {
     const url = new URL('/api/v1/builds', input.ketryxUrl);
     const urlString = url.toString();
     core.debug(`Sending request to ${urlString}: ${JSON.stringify(data)}`);
-    const response = await fetch(urlString, {
+    const response = await fetchWithContext(urlString, {
         method: 'post',
         body: JSON.stringify(data),
         headers: {
@@ -383,10 +421,16 @@ async function uploadBuild(input, artifacts, tests) {
         const contentType = response.headers.get('content-type');
         if (contentType === 'application/json' ||
             contentType?.startsWith('application/json;')) {
-            const responseData = (await response.json());
-            core.debug(`Received response status ${response.status}, JSON ${JSON.stringify(responseData)}`);
-            if (responseData.error) {
-                error = responseData.error;
+            // A malformed body must not mask the error status we already know.
+            try {
+                const responseData = (await response.json());
+                core.debug(`Received response status ${response.status}, JSON ${JSON.stringify(responseData)}`);
+                if (responseData.error) {
+                    error = responseData.error;
+                }
+            }
+            catch (parseError) {
+                core.debug(`Failed to parse JSON error response from ${urlString}: ${parseError}`);
             }
         }
         else {
@@ -394,7 +438,7 @@ async function uploadBuild(input, artifacts, tests) {
         }
         return { ok: false, error };
     }
-    const responseData = (await response.json());
+    const responseData = (await readJsonResponse(urlString, response));
     core.debug(`Received response ${JSON.stringify(responseData)}`);
     return responseData;
 }
@@ -3235,6 +3279,14 @@ module.exports = require("node:string_decoder");
 
 "use strict";
 module.exports = require("node:url");
+
+/***/ }),
+
+/***/ 7975:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:util");
 
 /***/ }),
 
@@ -18762,13 +18814,19 @@ exports.visitAsync = visitAsync;
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
-/******/ 	
-/******/ 	// startup
-/******/ 	// Load entry module and return exports
-/******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(5915);
-/******/ 	module.exports = __webpack_exports__;
-/******/ 	
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
+(() => {
+"use strict";
+var exports = __webpack_exports__;
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const run_1 = __nccwpck_require__(8065);
+(0, run_1.run)();
+
+})();
+
+module.exports = __webpack_exports__;
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
