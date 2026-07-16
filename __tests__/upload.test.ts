@@ -6,7 +6,7 @@ import {
   describe,
   expect,
   test,
-} from '@jest/globals';
+} from 'vitest';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import os from 'node:os';

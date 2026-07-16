@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { readActionInput } from '../src/input';
 
 // @actions/core reads inputs from environment variables of the form
