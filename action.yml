@@ -2,7 +2,7 @@ name: 'Ketryx'
 description: 'Send build results to Ketryx'
 author: 'Ketryx'
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
 branding:
   icon: check-square
