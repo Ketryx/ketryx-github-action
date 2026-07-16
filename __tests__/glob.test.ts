@@ -2,7 +2,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { glob } from 'glob';
+import { glob } from '../src/glob';
 
 // Characterization of the glob contract that main.ts relies on:
 // awaiting glob(pattern) yields the list of matching file paths.

@@ -31,7 +31,6 @@
   },
   "dependencies": {
     "@actions/core": "^1.11.1",
-    "glob": "^11.1.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
