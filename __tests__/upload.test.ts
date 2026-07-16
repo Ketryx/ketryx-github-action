@@ -6,12 +6,14 @@ import {
   describe,
   expect,
   test,
+  vi,
 } from 'vitest';
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
+import * as core from '@actions/core';
 import { uploadBuild, uploadBuildArtifact } from '../src/upload';
 import type { ActionInput } from '../src/input';
 
@@ -175,16 +177,19 @@ describe('uploadBuildArtifact', () => {
 
 describe('uploadBuild', () => {
   let savedEnv: NodeJS.ProcessEnv;
+  let warning: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     savedEnv = { ...process.env };
     process.env.GITHUB_SERVER_URL = 'https://github.com';
     process.env.GITHUB_REPOSITORY = 'ketryx/example';
     process.env.GITHUB_RUN_ID = '12345';
+    warning = vi.spyOn(core, 'warning').mockImplementation(() => {});
   });
 
   afterEach(() => {
     process.env = savedEnv;
+    vi.restoreAllMocks();
   });
 
   test('posts build data as JSON and returns the response data', async () => {
@@ -246,6 +251,7 @@ describe('uploadBuild', () => {
     const result = await uploadBuild(baseInput(), [], []);
 
     expect(result).toEqual({ ok: false, error: 'Version not found' });
+    expect(warning).not.toHaveBeenCalled();
   });
 
   test('returns a generic error on a non-JSON error response', async () => {
@@ -258,6 +264,11 @@ describe('uploadBuild', () => {
     const result = await uploadBuild(baseInput(), [], []);
 
     expect(result).toEqual({ ok: false, error: 'Error status 500' });
+    expect(warning).toHaveBeenCalledOnce();
+    const message = String(warning.mock.calls[0][0]);
+    expect(message).toContain('status 500');
+    expect(message).toContain('text/plain');
+    expect(message).not.toContain('Internal Server Error');
   });
 
   test('reports URL and status when a 200 response is not JSON', async () => {
@@ -274,6 +285,15 @@ describe('uploadBuild', () => {
     const result = await uploadBuild(baseInput(), [], []);
 
     expect(result).toEqual({ ok: false, error: 'Error status 400' });
+
+    // A visible warning with metadata only: the body may come from an
+    // intercepting proxy or SSO gateway, so its content must not appear
+    // outside opt-in debug logs.
+    expect(warning).toHaveBeenCalledOnce();
+    const message = String(warning.mock.calls[0][0]);
+    expect(message).toContain('status 400');
+    expect(message).toContain('application/json');
+    expect(message).not.toContain('<html>');
   });
 
   test('reports the URL and cause when the server is unreachable', async () => {
