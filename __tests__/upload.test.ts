@@ -10,12 +10,17 @@ import {
 } from 'vitest';
 import http from 'node:http';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import * as core from '@actions/core';
 import { uploadBuild, uploadBuildArtifact } from '../src/upload';
 import type { ActionInput } from '../src/input';
+import {
+  cleanActionEnv,
+  makeTmpDir,
+  startTestServer,
+  TestServer,
+} from './helpers';
 
 type RecordedRequest = {
   method: string | undefined;
@@ -33,42 +38,31 @@ type StubbedResponse = {
 
 // Characterization tests against a real HTTP server, so that they hold
 // regardless of the underlying fetch implementation.
-let server: http.Server;
+let server: TestServer;
 let serverUrl: string;
 let requests: RecordedRequest[];
 let nextResponse: StubbedResponse;
 
 beforeAll(async () => {
-  server = http.createServer((req, res) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => {
-      const rawBody = Buffer.concat(chunks);
-      requests.push({
-        method: req.method,
-        url: req.url,
-        headers: req.headers,
-        // The UTF-8 view is lossy for binary payloads; use rawBody for those.
-        body: rawBody.toString('utf8'),
-        rawBody,
-      });
-      res.writeHead(nextResponse.status, {
-        'content-type': nextResponse.contentType ?? 'application/json',
-      });
-      res.end(nextResponse.body);
+  server = await startTestServer((req, rawBody, res) => {
+    requests.push({
+      method: req.method,
+      url: req.url,
+      headers: req.headers,
+      // The UTF-8 view is lossy for binary payloads; use rawBody for those.
+      body: rawBody.toString('utf8'),
+      rawBody,
     });
+    res.writeHead(nextResponse.status, {
+      'content-type': nextResponse.contentType ?? 'application/json',
+    });
+    res.end(nextResponse.body);
   });
-  await new Promise<void>((resolve) => {
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  const address = server.address() as AddressInfo;
-  serverUrl = `http://127.0.0.1:${address.port}`;
+  serverUrl = server.url;
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    server.close((err) => (err ? reject(err) : resolve()));
-  });
+  await server.close();
 });
 
 let warning: ReturnType<typeof vi.spyOn>;
@@ -106,7 +100,7 @@ describe('uploadBuildArtifact', () => {
   const fileContent = 'test artifact content';
 
   beforeAll(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ketryx-test-'));
+    tmpDir = await makeTmpDir('ketryx-test');
     filePath = path.join(tmpDir, 'artifact.json');
     await fs.writeFile(filePath, fileContent);
   });
@@ -196,17 +190,17 @@ describe('uploadBuildArtifact', () => {
 });
 
 describe('uploadBuild', () => {
-  let savedEnv: NodeJS.ProcessEnv;
+  let restoreEnv: () => void;
 
   beforeEach(() => {
-    savedEnv = { ...process.env };
+    restoreEnv = cleanActionEnv();
     process.env.GITHUB_SERVER_URL = 'https://github.com';
     process.env.GITHUB_REPOSITORY = 'ketryx/example';
     process.env.GITHUB_RUN_ID = '12345';
   });
 
   afterEach(() => {
-    process.env = savedEnv;
+    restoreEnv();
   });
 
   test('posts build data as JSON and returns the response data', async () => {

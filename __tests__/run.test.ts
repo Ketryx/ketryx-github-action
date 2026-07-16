@@ -7,13 +7,18 @@ import {
   test,
   vi,
 } from 'vitest';
-import http from 'node:http';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
-import type { AddressInfo } from 'node:net';
 import * as core from '@actions/core';
 import { run } from '../src/run';
+import {
+  cleanActionEnv,
+  makeTmpDir,
+  setInput,
+  setRequiredInputs,
+  startTestServer,
+  TestServer,
+} from './helpers';
 
 // End-to-end tests of the action's orchestration: real input parsing via
 // INPUT_* env vars, real globbing over tmp files, and real HTTP uploads
@@ -26,7 +31,7 @@ type UploadedArtifact = {
   partContentType: string;
 };
 
-let server: http.Server;
+let server: TestServer;
 let serverUrl: string;
 let uploads: UploadedArtifact[];
 let buildRequests: string[];
@@ -34,66 +39,43 @@ let buildResponse: object;
 let artifactUploadStatus: number;
 
 beforeAll(async () => {
-  server = http.createServer((req, res) => {
-    const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => {
-      const body = Buffer.concat(chunks).toString('utf8');
-      if (req.url?.startsWith('/api/v1/build-artifacts')) {
-        res.writeHead(artifactUploadStatus, {
-          'content-type': 'application/json',
-        });
-        if (artifactUploadStatus !== 200) {
-          res.end('{}');
-          return;
-        }
-        uploads.push({
-          filename: /filename="([^"]+)"/.exec(body)?.[1] ?? '',
-          partContentType: /Content-Type: (\S+)/.exec(body)?.[1] ?? '',
-        });
-        res.end(JSON.stringify({ id: `file-${uploads.length}` }));
-      } else {
-        res.writeHead(200, { 'content-type': 'application/json' });
-        buildRequests.push(body);
-        res.end(JSON.stringify(buildResponse));
+  server = await startTestServer((req, body, res) => {
+    const text = body.toString('utf8');
+    if (req.url?.startsWith('/api/v1/build-artifacts')) {
+      res.writeHead(artifactUploadStatus, {
+        'content-type': 'application/json',
+      });
+      if (artifactUploadStatus !== 200) {
+        res.end('{}');
+        return;
       }
-    });
+      uploads.push({
+        filename: /filename="([^"]+)"/.exec(text)?.[1] ?? '',
+        partContentType: /Content-Type: (\S+)/.exec(text)?.[1] ?? '',
+      });
+      res.end(JSON.stringify({ id: `file-${uploads.length}` }));
+    } else {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      buildRequests.push(text);
+      res.end(JSON.stringify(buildResponse));
+    }
   });
-  await new Promise<void>((resolve) => {
-    server.listen(0, '127.0.0.1', resolve);
-  });
-  serverUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  serverUrl = server.url;
 });
 
 afterAll(async () => {
-  await new Promise<void>((resolve, reject) => {
-    server.close((err) => (err ? reject(err) : resolve()));
-  });
+  await server.close();
 });
 
-function setInput(name: string, value: string): void {
-  process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] = value;
-}
-
-let savedEnv: NodeJS.ProcessEnv;
+let restoreEnv: () => void;
 let tmpDir: string;
 let setOutput: ReturnType<typeof vi.spyOn>;
 let setFailed: ReturnType<typeof vi.spyOn>;
 
 beforeEach(async () => {
-  savedEnv = { ...process.env };
-  for (const key of Object.keys(process.env)) {
-    if (/^(INPUT_|GITHUB_)/.test(key)) {
-      delete process.env[key];
-    }
-  }
+  restoreEnv = cleanActionEnv();
+  setRequiredInputs('proj-1', 'key-1');
   setInput('ketryx-url', serverUrl);
-  setInput('project', 'proj-1');
-  setInput('api-key', 'key-1');
-  // The check-* booleans replicate action.yml defaults; see input.test.ts.
-  setInput('check-dependencies-status', 'false');
-  setInput('check-item-association', 'false');
-  setInput('check-release-status', 'false');
   process.env.GITHUB_SERVER_URL = 'https://github.com';
   process.env.GITHUB_REPOSITORY = 'ketryx/example';
   process.env.GITHUB_RUN_ID = '1';
@@ -102,14 +84,14 @@ beforeEach(async () => {
   buildRequests = [];
   buildResponse = { ok: true, buildId: 'build-1', projectId: 'proj-1' };
   artifactUploadStatus = 200;
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ketryx-run-test-'));
+  tmpDir = await makeTmpDir('ketryx-run-test');
 
   setOutput = vi.spyOn(core, 'setOutput').mockImplementation(() => {});
   setFailed = vi.spyOn(core, 'setFailed').mockImplementation(() => {});
 });
 
 afterEach(async () => {
-  process.env = savedEnv;
+  restoreEnv();
   vi.restoreAllMocks();
   await fs.rm(tmpDir, { recursive: true, force: true });
 });

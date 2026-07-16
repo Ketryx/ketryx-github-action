@@ -1,15 +1,15 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import fs from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { glob } from '../src/glob';
+import { makeTmpDir } from './helpers';
 
 // Characterization of the glob contract that run.ts relies on:
 // awaiting glob(pattern) yields the list of matching file paths.
 let tmpDir: string;
 
 beforeAll(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ketryx-glob-test-'));
+  tmpDir = await makeTmpDir('ketryx-glob-test');
   await fs.mkdir(path.join(tmpDir, 'reports'));
   await fs.writeFile(path.join(tmpDir, 'reports', 'junit-1.xml'), '<xml/>');
   await fs.writeFile(path.join(tmpDir, 'reports', 'junit-2.xml'), '<xml/>');

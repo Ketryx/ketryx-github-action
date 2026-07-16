@@ -1,35 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { readActionInput } from '../src/input';
+import { cleanActionEnv, setInput, setRequiredInputs } from './helpers';
 
-// @actions/core reads inputs from environment variables of the form
-// INPUT_<NAME>, with spaces replaced by underscores and uppercased.
-function setInput(name: string, value: string): void {
-  process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] = value;
-}
-
-const INPUT_ENV_PATTERN = /^(INPUT_|GITHUB_)/;
-
-let savedEnv: NodeJS.ProcessEnv;
+let restoreEnv: () => void;
 
 beforeEach(() => {
-  savedEnv = { ...process.env };
-  for (const key of Object.keys(process.env)) {
-    if (INPUT_ENV_PATTERN.test(key)) {
-      delete process.env[key];
-    }
-  }
-  // project/api-key are required; the check-* booleans replicate action.yml
-  // defaults, which only the GitHub runner injects into INPUT_* env vars
-  // (getBooleanInput throws on an unset input).
-  setInput('project', 'test-project');
-  setInput('api-key', 'test-api-key');
-  setInput('check-dependencies-status', 'false');
-  setInput('check-item-association', 'false');
-  setInput('check-release-status', 'false');
+  restoreEnv = cleanActionEnv();
+  setRequiredInputs();
 });
 
 afterEach(() => {
-  process.env = savedEnv;
+  restoreEnv();
 });
 
 describe('required inputs', () => {
