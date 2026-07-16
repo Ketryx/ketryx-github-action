@@ -40,28 +40,38 @@ export async function run(): Promise<void> {
       return fileId;
     };
 
-    for (const pattern of input.testCucumberPath) {
-      for (const filePath of await glob(pattern)) {
-        const fileId = await performUpload(filePath, 'application/json');
-        artifacts.push({ id: fileId, type: 'cucumber-json' });
-      }
-    }
-    for (const pattern of input.testJunitPath) {
-      for (const filePath of await glob(pattern)) {
-        const fileId = await performUpload(filePath, 'application/xml');
-        artifacts.push({ id: fileId, type: 'junit-xml' });
-      }
-    }
-    for (const pattern of input.cycloneDxJsonPath) {
-      for (const filePath of await glob(pattern)) {
-        const fileId = await performUpload(filePath, 'application/json');
-        artifacts.push({ id: fileId, type: 'cyclonedx-json' });
-      }
-    }
-    for (const pattern of input.spdxJsonPath) {
-      for (const filePath of await glob(pattern)) {
-        const fileId = await performUpload(filePath, 'application/json');
-        artifacts.push({ id: fileId, type: 'spdx-json' });
+    const artifactKinds: Array<{
+      patterns: string[];
+      contentType: string;
+      type: ArtifactData['type'];
+    }> = [
+      {
+        patterns: input.testCucumberPath,
+        contentType: 'application/json',
+        type: 'cucumber-json',
+      },
+      {
+        patterns: input.testJunitPath,
+        contentType: 'application/xml',
+        type: 'junit-xml',
+      },
+      {
+        patterns: input.cycloneDxJsonPath,
+        contentType: 'application/json',
+        type: 'cyclonedx-json',
+      },
+      {
+        patterns: input.spdxJsonPath,
+        contentType: 'application/json',
+        type: 'spdx-json',
+      },
+    ];
+    for (const { patterns, contentType, type } of artifactKinds) {
+      for (const pattern of patterns) {
+        for (const filePath of await glob(pattern)) {
+          const fileId = await performUpload(filePath, contentType);
+          artifacts.push({ id: fileId, type });
+        }
       }
     }
     for (const pattern of input.artifactPath) {
