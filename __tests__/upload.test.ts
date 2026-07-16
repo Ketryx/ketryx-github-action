@@ -20,6 +20,7 @@ type RecordedRequest = {
   url: string | undefined;
   headers: http.IncomingHttpHeaders;
   body: string;
+  rawBody: Buffer;
 };
 
 type StubbedResponse = {
@@ -40,11 +41,14 @@ beforeAll(async () => {
     const chunks: Buffer[] = [];
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
+      const rawBody = Buffer.concat(chunks);
       requests.push({
         method: req.method,
         url: req.url,
         headers: req.headers,
-        body: Buffer.concat(chunks).toString('utf8'),
+        // The UTF-8 view is lossy for binary payloads; use rawBody for those.
+        body: rawBody.toString('utf8'),
+        rawBody,
       });
       res.writeHead(nextResponse.status, {
         'content-type': nextResponse.contentType ?? 'application/json',
@@ -143,6 +147,29 @@ describe('uploadBuildArtifact', () => {
     await expect(
       uploadBuildArtifact(baseInput(), filePath, 'application/json')
     ).rejects.toThrow(/\/api\/v1\/build-artifacts\?project=test-project.*200/);
+  });
+
+  test('uploads binary file content byte-for-byte', async () => {
+    // Several hundred KB covering all byte values, including sequences
+    // that are invalid UTF-8 — a corruption or truncation anywhere in the
+    // openAsBlob -> FormData -> multipart body path would break this.
+    const binaryContent = Buffer.from(
+      Array.from({ length: 300 * 1024 }, (_, i) => (i * 7 + 13) % 256)
+    );
+    const binaryPath = path.join(tmpDir, 'artifact.bin');
+    await fs.writeFile(binaryPath, binaryContent);
+    nextResponse = { status: 200, body: JSON.stringify({ id: 'file-bin' }) };
+
+    const id = await uploadBuildArtifact(
+      baseInput(),
+      binaryPath,
+      'application/octet-stream'
+    );
+
+    expect(id).toBe('file-bin');
+    const request = requests[0];
+    expect(request.body).toContain('filename="artifact.bin"');
+    expect(request.rawBody.indexOf(binaryContent)).toBeGreaterThan(-1);
   });
 });
 
