@@ -151,8 +151,16 @@ const glob_promise_1 = __importDefault(__nccwpck_require__(8252));
 const input_1 = __nccwpck_require__(8657);
 const upload_1 = __nccwpck_require__(4831);
 const BINARY_CONTENT_TYPE = 'application/octet-stream';
+const SUPPRESS_NOTICE_ENV = 'KETRYX_SUPPRESS_V1_DEPRECATION';
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
+        if (!process.env[SUPPRESS_NOTICE_ENV]) {
+            core.notice('ketryx-github-action v1 runs on Node.js 20, which is end-of-life. ' +
+                'Upgrade to Ketryx/ketryx-github-action@v2 (Node.js 24; self-hosted runners ' +
+                'need actions/runner v2.327.1 or later). v1 receives critical fixes only. ' +
+                `Set ${SUPPRESS_NOTICE_ENV}=true to hide this notice. ` +
+                'See https://github.com/Ketryx/ketryx-github-action/releases');
+        }
         try {
             const input = (0, input_1.readActionInput)();
             // debug is only output if the secret `ACTIONS_STEP_DEBUG` is set to true.
