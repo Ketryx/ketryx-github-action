@@ -17,7 +17,9 @@ import { run } from '../src/run';
 
 // End-to-end tests of the action's orchestration: real input parsing via
 // INPUT_* env vars, real globbing over tmp files, and real HTTP uploads
-// against a local server. Only core outputs are spied on for observation.
+// against a local server. Only core.setOutput and core.setFailed are
+// stubbed — to observe results and keep setFailed from touching
+// process.exitCode; everything else is real.
 
 type UploadedArtifact = {
   filename: string;
@@ -88,6 +90,7 @@ beforeEach(async () => {
   setInput('ketryx-url', serverUrl);
   setInput('project', 'proj-1');
   setInput('api-key', 'key-1');
+  // The check-* booleans replicate action.yml defaults; see input.test.ts.
   setInput('check-dependencies-status', 'false');
   setInput('check-item-association', 'false');
   setInput('check-release-status', 'false');

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { glob } from '../src/glob';
 
-// Characterization of the glob contract that main.ts relies on:
+// Characterization of the glob contract that run.ts relies on:
 // awaiting glob(pattern) yields the list of matching file paths.
 let tmpDir: string;
 

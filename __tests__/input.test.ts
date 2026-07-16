@@ -18,7 +18,9 @@ beforeEach(() => {
       delete process.env[key];
     }
   }
-  // Required inputs and defaults for a minimal valid configuration.
+  // project/api-key are required; the check-* booleans replicate action.yml
+  // defaults, which only the GitHub runner injects into INPUT_* env vars
+  // (getBooleanInput throws on an unset input).
   setInput('project', 'test-project');
   setInput('api-key', 'test-api-key');
   setInput('check-dependencies-status', 'false');

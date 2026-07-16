@@ -76,7 +76,9 @@ async function fetchWithContext(
     return await fetch(urlString, init);
   } catch (error) {
     const cause =
-      error instanceof Error && error.cause !== undefined
+      error instanceof Error &&
+      error.cause !== undefined &&
+      error.cause !== null
         ? `: ${describeError(error.cause)}`
         : '';
     throw new Error(`Request to ${urlString} failed${cause}`, {
