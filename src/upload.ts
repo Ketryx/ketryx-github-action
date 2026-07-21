@@ -1,4 +1,4 @@
-import fetch, { fileFrom, FormData } from 'node-fetch';
+import fs from 'node:fs';
 import path from 'node:path';
 import * as core from '@actions/core';
 import type { ActionInput } from './input';
@@ -56,6 +56,102 @@ type BuildApiResponseData = {
   versionsReleased?: boolean | null;
 };
 
+function describeError(error: unknown): string {
+  // Aggregated connection errors (e.g. from trying multiple addresses)
+  // often carry an empty message; their parts are more informative.
+  if (error instanceof AggregateError && error.errors.length > 0) {
+    return error.errors.map(String).join('; ');
+  }
+  return String(error);
+}
+
+// Native fetch rejects with a bare "fetch failed" TypeError and hides the
+// actual reason (DNS, connection, TLS, ...) in error.cause; unwrap it so
+// failures surface with actionable context.
+async function fetchWithContext(
+  urlString: string,
+  init: Parameters<typeof fetch>[1]
+): Promise<Response> {
+  try {
+    return await fetch(urlString, init);
+  } catch (error) {
+    const cause =
+      error instanceof Error && error.cause != null
+        ? `: ${describeError(error.cause)}`
+        : '';
+    throw new Error(`Request to ${urlString} failed${cause}`, {
+      cause: error,
+    });
+  }
+}
+
+async function readJsonResponse(
+  urlString: string,
+  response: Response
+): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch (error) {
+    throw new Error(
+      `Unexpected non-JSON response from ${urlString} (status ${response.status}): ${error}`,
+      { cause: error }
+    );
+  }
+}
+
+// Extracts the most useful error description from a non-200 response: the
+// server-reported error message if the body contains one, otherwise a
+// generic status error. The body may come from an intercepting proxy or SSO
+// gateway and can contain sensitive content, so the visible warning carries
+// metadata only; the (truncated) body stays in opt-in debug logs.
+async function readErrorMessage(
+  urlString: string,
+  response: Response
+): Promise<string> {
+  let bodyText = '';
+  try {
+    bodyText = await response.text();
+  } catch (readError) {
+    core.debug(
+      `Failed to read error response body from ${urlString}: ${readError}`
+    );
+  }
+
+  let serverError: string | undefined;
+  try {
+    const responseData = JSON.parse(bodyText) as BuildApiResponseData;
+    core.debug(
+      `Received response status ${response.status}, JSON ${JSON.stringify(
+        responseData
+      )}`
+    );
+    serverError = responseData.error;
+  } catch (parseError) {
+    core.debug(
+      `Failed to parse error response from ${urlString}: ${parseError}`
+    );
+  }
+
+  if (serverError) {
+    return serverError;
+  }
+
+  core.warning(
+    `Ketryx returned status ${response.status} from ${urlString} without a readable ` +
+      `error message (content-type ${
+        response.headers.get('content-type') || 'unspecified'
+      }, ${Buffer.byteLength(bodyText)} bytes). ` +
+      'Enable ACTIONS_STEP_DEBUG and re-run for details.'
+  );
+  core.debug(
+    `Error response body from ${urlString} (truncated): ${bodyText.slice(
+      0,
+      512
+    )}`
+  );
+  return `Error status ${response.status}`;
+}
+
 export async function uploadBuildArtifact(
   input: Pick<ActionInput, 'ketryxUrl' | 'project' | 'apiKey'>,
   filePath: string,
@@ -65,11 +161,11 @@ export async function uploadBuildArtifact(
   url.searchParams.set('project', input.project);
   const urlString = url.toString();
   const formData = new FormData();
-  const file = await fileFrom(filePath, contentType);
+  const file = await fs.openAsBlob(filePath, { type: contentType });
   formData.set('file', file, path.basename(filePath));
 
   core.debug(`Sending request to ${urlString}`);
-  const response = await fetch(urlString, {
+  const response = await fetchWithContext(urlString, {
     method: 'post',
     body: formData,
     headers: {
@@ -79,11 +175,14 @@ export async function uploadBuildArtifact(
 
   if (response.status !== 200) {
     throw new Error(
-      `Error uploading build artifact to ${urlString}: status ${response.status}`
+      `Error uploading build artifact to ${urlString}: ${await readErrorMessage(
+        urlString,
+        response
+      )}`
     );
   }
 
-  const responseData = await response.json();
+  const responseData = await readJsonResponse(urlString, response);
   if (hasProperty(responseData, 'id') && typeof responseData.id === 'string') {
     return responseData.id;
   }
@@ -146,7 +245,7 @@ export async function uploadBuild(
   const urlString = url.toString();
 
   core.debug(`Sending request to ${urlString}: ${JSON.stringify(data)}`);
-  const response = await fetch(urlString, {
+  const response = await fetchWithContext(urlString, {
     method: 'post',
     body: JSON.stringify(data),
     headers: {
@@ -155,31 +254,12 @@ export async function uploadBuild(
     },
   });
   if (response.status !== 200) {
-    let error = `Error status ${response.status}`;
-    const contentType = response.headers.get('content-type');
-    if (
-      contentType === 'application/json' ||
-      contentType?.startsWith('application/json;')
-    ) {
-      const responseData = (await response.json()) as BuildApiResponseData;
-      core.debug(
-        `Received response status ${response.status}, JSON ${JSON.stringify(
-          responseData
-        )}`
-      );
-      if (responseData.error) {
-        error = responseData.error;
-      }
-    } else {
-      core.debug(
-        `Received response status ${response.status}, type ${
-          contentType || 'unspecified'
-        }`
-      );
-    }
-    return { ok: false, error };
+    return { ok: false, error: await readErrorMessage(urlString, response) };
   }
-  const responseData = (await response.json()) as BuildApiResponseData;
+  const responseData = (await readJsonResponse(
+    urlString,
+    response
+  )) as BuildApiResponseData;
   core.debug(`Received response ${JSON.stringify(responseData)}`);
   return responseData;
 }
