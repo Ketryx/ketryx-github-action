@@ -18,6 +18,7 @@ import type { ActionInput } from '../src/input';
 import {
   cleanActionEnv,
   makeTmpDir,
+  setGitHubRunEnv,
   startTestServer,
   TestServer,
 } from './helpers';
@@ -197,9 +198,7 @@ describe('uploadBuild', () => {
 
   beforeEach(() => {
     restoreEnv = cleanActionEnv();
-    process.env.GITHUB_SERVER_URL = 'https://github.com';
-    process.env.GITHUB_REPOSITORY = 'ketryx/example';
-    process.env.GITHUB_RUN_ID = '12345';
+    setGitHubRunEnv();
   });
 
   afterEach(() => {
@@ -348,9 +347,7 @@ describe('request timeout', () => {
 
   beforeEach(() => {
     restoreEnv = cleanActionEnv();
-    process.env.GITHUB_SERVER_URL = 'https://github.com';
-    process.env.GITHUB_REPOSITORY = 'ketryx/example';
-    process.env.GITHUB_RUN_ID = '12345';
+    setGitHubRunEnv();
   });
 
   afterEach(async () => {

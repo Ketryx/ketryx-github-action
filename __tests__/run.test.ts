@@ -14,6 +14,7 @@ import { run } from '../src/run';
 import {
   cleanActionEnv,
   makeTmpDir,
+  setGitHubRunEnv,
   setInput,
   setRequiredInputs,
   startTestServer,
@@ -76,9 +77,7 @@ beforeEach(async () => {
   restoreEnv = cleanActionEnv();
   setRequiredInputs('proj-1', 'key-1');
   setInput('ketryx-url', serverUrl);
-  process.env.GITHUB_SERVER_URL = 'https://github.com';
-  process.env.GITHUB_REPOSITORY = 'ketryx/example';
-  process.env.GITHUB_RUN_ID = '1';
+  setGitHubRunEnv('1');
 
   uploads = [];
   buildRequests = [];

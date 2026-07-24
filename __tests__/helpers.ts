@@ -39,6 +39,14 @@ export function setRequiredInputs(
   setInput('check-release-status', 'false');
 }
 
+// Sets the GitHub Actions environment variables from which uploadBuild
+// derives the source and repository URLs.
+export function setGitHubRunEnv(runId = '12345'): void {
+  process.env.GITHUB_SERVER_URL = 'https://github.com';
+  process.env.GITHUB_REPOSITORY = 'ketryx/example';
+  process.env.GITHUB_RUN_ID = runId;
+}
+
 export type TestServer = {
   url: string;
   close: () => Promise<void>;
