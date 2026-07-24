@@ -18,6 +18,7 @@ import type { ActionInput } from '../src/input';
 import {
   cleanActionEnv,
   makeTmpDir,
+  setGitHubRunEnv,
   startTestServer,
   TestServer,
 } from './helpers';
@@ -91,6 +92,9 @@ function baseInput(): ActionInput {
     checkDependenciesStatus: false,
     checkChangeRequestItemAssociation: false,
     checkReleaseStatus: false,
+    // Well above any latency of the local test servers, but low enough that
+    // a regression fails the suite instead of hanging it for 35 minutes.
+    requestTimeoutSeconds: 30,
   };
 }
 
@@ -194,9 +198,7 @@ describe('uploadBuild', () => {
 
   beforeEach(() => {
     restoreEnv = cleanActionEnv();
-    process.env.GITHUB_SERVER_URL = 'https://github.com';
-    process.env.GITHUB_REPOSITORY = 'ketryx/example';
-    process.env.GITHUB_RUN_ID = '12345';
+    setGitHubRunEnv();
   });
 
   afterEach(() => {
@@ -336,6 +338,60 @@ describe('uploadBuild', () => {
     };
 
     await expect(uploadBuild(input, [], [])).rejects.toThrow(/ECONNREFUSED/);
+  });
+});
+
+describe('request timeout', () => {
+  let restoreEnv: () => void;
+  let slowServer: TestServer;
+
+  beforeEach(() => {
+    restoreEnv = cleanActionEnv();
+    setGitHubRunEnv();
+  });
+
+  afterEach(async () => {
+    restoreEnv();
+    await slowServer?.close();
+  });
+
+  // Delays just long enough to exercise the timeout without slowing the
+  // suite down.
+  async function startSlowServer(delayMs: number): Promise<TestServer> {
+    return startTestServer((_req, _body, res) => {
+      setTimeout(() => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      }, delayMs);
+    });
+  }
+
+  test('fails when the response exceeds the configured timeout', async () => {
+    // undici's timeout checker has ~1s granularity, so the gap between
+    // timeout and delay must clear that, not just be numerically smaller.
+    slowServer = await startSlowServer(3000);
+    const input: ActionInput = {
+      ...baseInput(),
+      ketryxUrl: slowServer.url,
+      requestTimeoutSeconds: 0.2,
+    };
+
+    await expect(uploadBuild(input, [], [])).rejects.toThrow(
+      /UND_ERR_HEADERS_TIMEOUT|HeadersTimeoutError/
+    );
+  });
+
+  test('waits past a slow response when given enough headroom', async () => {
+    slowServer = await startSlowServer(1500);
+    const input: ActionInput = {
+      ...baseInput(),
+      ketryxUrl: slowServer.url,
+      requestTimeoutSeconds: 5,
+    };
+
+    const result = await uploadBuild(input, [], []);
+
+    expect(result).toEqual({ ok: true });
   });
 });
 

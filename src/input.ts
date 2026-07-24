@@ -1,6 +1,13 @@
 import * as core from '@actions/core';
 import YAML from 'yaml';
 
+// v1 (node-fetch) waited for the response indefinitely, and some uploads
+// (e.g. large SBOMs) rely on a long processing time. Default to a generous
+// timeout that closely resembles that behavior while still keeping runs
+// bounded; the request-timeout-seconds input lets clients tighten it to
+// fail faster.
+export const DEFAULT_REQUEST_TIMEOUT_SECONDS = 35 * 60;
+
 type TestInput = {
   testedItem: string;
   result: 'pass' | 'fail' | 'PASS' | 'FAIL';
@@ -27,6 +34,7 @@ export type ActionInput = {
   checkDependenciesStatus: boolean;
   checkChangeRequestItemAssociation: boolean;
   checkReleaseStatus: boolean;
+  requestTimeoutSeconds: number;
 };
 
 export function readActionInput(): ActionInput {
@@ -85,6 +93,17 @@ export function readActionInput(): ActionInput {
   );
   const checkReleaseStatus = core.getBooleanInput('check-release-status');
 
+  const requestTimeoutStr = core.getInput('request-timeout-seconds');
+  let requestTimeoutSeconds = DEFAULT_REQUEST_TIMEOUT_SECONDS;
+  if (requestTimeoutStr) {
+    requestTimeoutSeconds = Number(requestTimeoutStr);
+    if (!Number.isFinite(requestTimeoutSeconds) || requestTimeoutSeconds <= 0) {
+      throw new Error(
+        `Invalid input request-timeout-seconds: ${requestTimeoutStr}`
+      );
+    }
+  }
+
   if (version && commitSha) {
     core.info(
       'Both `version` and `commit-sha` are specified. The `commit-sha` parameter will be ignored.'
@@ -114,5 +133,6 @@ export function readActionInput(): ActionInput {
     checkDependenciesStatus,
     checkChangeRequestItemAssociation,
     checkReleaseStatus,
+    requestTimeoutSeconds,
   };
 }
