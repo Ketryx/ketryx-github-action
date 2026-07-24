@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@actions/core": "^1.11.1",
+    "undici": "^7.28.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

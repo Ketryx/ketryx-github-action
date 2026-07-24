@@ -1,8 +1,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as core from '@actions/core';
+import { Agent, fetch as undiciFetch, FormData } from 'undici';
 import type { ActionInput } from './input';
 import { hasProperty } from './util';
+
+// Large uploads can legitimately take several minutes to get a response.
+// Node's global fetch (undici) applies a much shorter default headers/body
+// timeout, so requests must go through an explicit long-timeout dispatcher
+// rather than the default one.
+const DEFAULT_REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
+
+// Overridable only for tests, which need a short timeout to exercise this
+// path without actually waiting minutes.
+function getRequestTimeoutMs(): number {
+  const override = Number(process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS);
+  return override > 0 ? override : DEFAULT_REQUEST_TIMEOUT_MS;
+}
 
 export type ArtifactData = {
   id: string;
@@ -70,10 +84,15 @@ function describeError(error: unknown): string {
 // failures surface with actionable context.
 async function fetchWithContext(
   urlString: string,
-  init: Parameters<typeof fetch>[1]
+  init: Parameters<typeof undiciFetch>[1]
 ): Promise<Response> {
+  const timeoutMs = getRequestTimeoutMs();
+  const dispatcher = new Agent({
+    headersTimeout: timeoutMs,
+    bodyTimeout: timeoutMs,
+  });
   try {
-    return await fetch(urlString, init);
+    return (await undiciFetch(urlString, { ...init, dispatcher })) as Response;
   } catch (error) {
     const cause =
       error instanceof Error && error.cause != null

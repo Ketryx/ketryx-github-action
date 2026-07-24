@@ -339,6 +339,57 @@ describe('uploadBuild', () => {
   });
 });
 
+describe('request timeout', () => {
+  let restoreEnv: () => void;
+  let slowServer: TestServer;
+
+  beforeEach(() => {
+    restoreEnv = cleanActionEnv();
+    process.env.GITHUB_SERVER_URL = 'https://github.com';
+    process.env.GITHUB_REPOSITORY = 'ketryx/example';
+    process.env.GITHUB_RUN_ID = '12345';
+  });
+
+  afterEach(async () => {
+    restoreEnv();
+    delete process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS;
+    await slowServer?.close();
+  });
+
+  // Delays just long enough to exercise the timeout without slowing the
+  // suite down.
+  async function startSlowServer(delayMs: number): Promise<TestServer> {
+    return startTestServer((_req, _body, res) => {
+      setTimeout(() => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      }, delayMs);
+    });
+  }
+
+  test('fails when the response exceeds the configured timeout', async () => {
+    // undici's timeout checker has ~1s granularity, so the gap between
+    // timeout and delay must clear that, not just be numerically smaller.
+    process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS = '200';
+    slowServer = await startSlowServer(3000);
+    const input: ActionInput = { ...baseInput(), ketryxUrl: slowServer.url };
+
+    await expect(uploadBuild(input, [], [])).rejects.toThrow(
+      /UND_ERR_HEADERS_TIMEOUT|HeadersTimeoutError/
+    );
+  });
+
+  test('waits past a slow response when given enough headroom', async () => {
+    process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS = '5000';
+    slowServer = await startSlowServer(1500);
+    const input: ActionInput = { ...baseInput(), ketryxUrl: slowServer.url };
+
+    const result = await uploadBuild(input, [], []);
+
+    expect(result).toEqual({ ok: true });
+  });
+});
+
 // Returns a port that was just released and is almost certainly closed.
 async function getClosedPort(): Promise<number> {
   const probe = http.createServer();
