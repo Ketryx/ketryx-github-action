@@ -101,6 +101,11 @@ async function fetchWithContext(
     throw new Error(`Request to ${urlString} failed${cause}`, {
       cause: error,
     });
+  } finally {
+    // Graceful close: resolves only after the caller has consumed the
+    // response body, then frees the socket — so every request gets a fresh
+    // connection and no idle socket lingers to hold the process open.
+    void dispatcher.close();
   }
 }
 
