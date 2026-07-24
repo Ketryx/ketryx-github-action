@@ -5,19 +5,6 @@ import { Agent, fetch as undiciFetch, FormData } from 'undici';
 import type { ActionInput } from './input';
 import { hasProperty } from './util';
 
-// Large uploads can legitimately take several minutes to get a response.
-// Node's global fetch (undici) applies a much shorter default headers/body
-// timeout, so requests must go through an explicit long-timeout dispatcher
-// rather than the default one.
-const DEFAULT_REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
-
-// Overridable only for tests, which need a short timeout to exercise this
-// path without actually waiting minutes.
-function getRequestTimeoutMs(): number {
-  const override = Number(process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS);
-  return override > 0 ? override : DEFAULT_REQUEST_TIMEOUT_MS;
-}
-
 export type ArtifactData = {
   id: string;
   type:
@@ -84,9 +71,13 @@ function describeError(error: unknown): string {
 // failures surface with actionable context.
 async function fetchWithContext(
   urlString: string,
-  init: Parameters<typeof undiciFetch>[1]
+  init: Parameters<typeof undiciFetch>[1],
+  timeoutSeconds: number
 ): Promise<Response> {
-  const timeoutMs = getRequestTimeoutMs();
+  // Node's global fetch (undici) enforces a 5-minute headers/body timeout by
+  // default, which large uploads legitimately exceed; an explicit dispatcher
+  // is the only way to raise it (an AbortSignal can only shorten it).
+  const timeoutMs = timeoutSeconds * 1000;
   const dispatcher = new Agent({
     headersTimeout: timeoutMs,
     bodyTimeout: timeoutMs,
@@ -177,7 +168,10 @@ async function readErrorMessage(
 }
 
 export async function uploadBuildArtifact(
-  input: Pick<ActionInput, 'ketryxUrl' | 'project' | 'apiKey'>,
+  input: Pick<
+    ActionInput,
+    'ketryxUrl' | 'project' | 'apiKey' | 'requestTimeoutSeconds'
+  >,
   filePath: string,
   contentType: string
 ): Promise<string> {
@@ -189,13 +183,17 @@ export async function uploadBuildArtifact(
   formData.set('file', file, path.basename(filePath));
 
   core.debug(`Sending request to ${urlString}`);
-  const response = await fetchWithContext(urlString, {
-    method: 'post',
-    body: formData,
-    headers: {
-      authorization: `Bearer ${input.apiKey}`,
+  const response = await fetchWithContext(
+    urlString,
+    {
+      method: 'post',
+      body: formData,
+      headers: {
+        authorization: `Bearer ${input.apiKey}`,
+      },
     },
-  });
+    input.requestTimeoutSeconds
+  );
 
   if (response.status !== 200) {
     throw new Error(
@@ -269,14 +267,18 @@ export async function uploadBuild(
   const urlString = url.toString();
 
   core.debug(`Sending request to ${urlString}: ${JSON.stringify(data)}`);
-  const response = await fetchWithContext(urlString, {
-    method: 'post',
-    body: JSON.stringify(data),
-    headers: {
-      authorization: `Bearer ${input.apiKey}`,
-      'content-type': 'application/json',
+  const response = await fetchWithContext(
+    urlString,
+    {
+      method: 'post',
+      body: JSON.stringify(data),
+      headers: {
+        authorization: `Bearer ${input.apiKey}`,
+        'content-type': 'application/json',
+      },
     },
-  });
+    input.requestTimeoutSeconds
+  );
   if (response.status !== 200) {
     return { ok: false, error: await readErrorMessage(urlString, response) };
   }

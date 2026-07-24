@@ -65,9 +65,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.DEFAULT_REQUEST_TIMEOUT_SECONDS = void 0;
 exports.readActionInput = readActionInput;
 const core = __importStar(__nccwpck_require__(7484));
 const yaml_1 = __importDefault(__nccwpck_require__(8815));
+// v1 (node-fetch) waited for the response indefinitely, and some uploads
+// (e.g. large SBOMs) rely on a long processing time. Default to a generous
+// timeout that closely resembles that behavior while still keeping runs
+// bounded; the request-timeout-seconds input lets clients tighten it to
+// fail faster.
+exports.DEFAULT_REQUEST_TIMEOUT_SECONDS = 35 * 60;
 function readActionInput() {
     const ketryxUrl = core.getInput('ketryx-url') || 'https://app.ketryx.com';
     const project = core.getInput('project');
@@ -106,6 +113,14 @@ function readActionInput() {
     const checkDependenciesStatus = core.getBooleanInput('check-dependencies-status');
     const checkChangeRequestItemAssociation = core.getBooleanInput('check-item-association');
     const checkReleaseStatus = core.getBooleanInput('check-release-status');
+    const requestTimeoutStr = core.getInput('request-timeout-seconds');
+    let requestTimeoutSeconds = exports.DEFAULT_REQUEST_TIMEOUT_SECONDS;
+    if (requestTimeoutStr) {
+        requestTimeoutSeconds = Number(requestTimeoutStr);
+        if (!Number.isFinite(requestTimeoutSeconds) || requestTimeoutSeconds <= 0) {
+            throw new Error(`Invalid input request-timeout-seconds: ${requestTimeoutStr}`);
+        }
+    }
     if (version && commitSha) {
         core.info('Both `version` and `commit-sha` are specified. The `commit-sha` parameter will be ignored.');
     }
@@ -130,6 +145,7 @@ function readActionInput() {
         checkDependenciesStatus,
         checkChangeRequestItemAssociation,
         checkReleaseStatus,
+        requestTimeoutSeconds,
     };
 }
 
@@ -336,17 +352,6 @@ const node_path_1 = __importDefault(__nccwpck_require__(6760));
 const core = __importStar(__nccwpck_require__(7484));
 const undici_1 = __nccwpck_require__(4371);
 const util_1 = __nccwpck_require__(4649);
-// Large uploads can legitimately take several minutes to get a response.
-// Node's global fetch (undici) applies a much shorter default headers/body
-// timeout, so requests must go through an explicit long-timeout dispatcher
-// rather than the default one.
-const DEFAULT_REQUEST_TIMEOUT_MS = 10 * 60 * 1000;
-// Overridable only for tests, which need a short timeout to exercise this
-// path without actually waiting minutes.
-function getRequestTimeoutMs() {
-    const override = Number(process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS);
-    return override > 0 ? override : DEFAULT_REQUEST_TIMEOUT_MS;
-}
 function describeError(error) {
     // Aggregated connection errors (e.g. from trying multiple addresses)
     // often carry an empty message; their parts are more informative.
@@ -358,8 +363,11 @@ function describeError(error) {
 // Native fetch rejects with a bare "fetch failed" TypeError and hides the
 // actual reason (DNS, connection, TLS, ...) in error.cause; unwrap it so
 // failures surface with actionable context.
-async function fetchWithContext(urlString, init) {
-    const timeoutMs = getRequestTimeoutMs();
+async function fetchWithContext(urlString, init, timeoutSeconds) {
+    // Node's global fetch (undici) enforces a 5-minute headers/body timeout by
+    // default, which large uploads legitimately exceed; an explicit dispatcher
+    // is the only way to raise it (an AbortSignal can only shorten it).
+    const timeoutMs = timeoutSeconds * 1000;
     const dispatcher = new undici_1.Agent({
         headersTimeout: timeoutMs,
         bodyTimeout: timeoutMs,
@@ -435,7 +443,7 @@ async function uploadBuildArtifact(input, filePath, contentType) {
         headers: {
             authorization: `Bearer ${input.apiKey}`,
         },
-    });
+    }, input.requestTimeoutSeconds);
     if (response.status !== 200) {
         throw new Error(`Error uploading build artifact to ${urlString}: ${await readErrorMessage(urlString, response)}`);
     }
@@ -497,7 +505,7 @@ async function uploadBuild(input, artifacts, tests) {
             authorization: `Bearer ${input.apiKey}`,
             'content-type': 'application/json',
         },
-    });
+    }, input.requestTimeoutSeconds);
     if (response.status !== 200) {
         return { ok: false, error: await readErrorMessage(urlString, response) };
     }

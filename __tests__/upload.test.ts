@@ -91,6 +91,9 @@ function baseInput(): ActionInput {
     checkDependenciesStatus: false,
     checkChangeRequestItemAssociation: false,
     checkReleaseStatus: false,
+    // Well above any latency of the local test servers, but low enough that
+    // a regression fails the suite instead of hanging it for 35 minutes.
+    requestTimeoutSeconds: 30,
   };
 }
 
@@ -352,7 +355,6 @@ describe('request timeout', () => {
 
   afterEach(async () => {
     restoreEnv();
-    delete process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS;
     await slowServer?.close();
   });
 
@@ -370,9 +372,12 @@ describe('request timeout', () => {
   test('fails when the response exceeds the configured timeout', async () => {
     // undici's timeout checker has ~1s granularity, so the gap between
     // timeout and delay must clear that, not just be numerically smaller.
-    process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS = '200';
     slowServer = await startSlowServer(3000);
-    const input: ActionInput = { ...baseInput(), ketryxUrl: slowServer.url };
+    const input: ActionInput = {
+      ...baseInput(),
+      ketryxUrl: slowServer.url,
+      requestTimeoutSeconds: 0.2,
+    };
 
     await expect(uploadBuild(input, [], [])).rejects.toThrow(
       /UND_ERR_HEADERS_TIMEOUT|HeadersTimeoutError/
@@ -380,9 +385,12 @@ describe('request timeout', () => {
   });
 
   test('waits past a slow response when given enough headroom', async () => {
-    process.env.KETRYX_ACTION_REQUEST_TIMEOUT_MS = '5000';
     slowServer = await startSlowServer(1500);
-    const input: ActionInput = { ...baseInput(), ketryxUrl: slowServer.url };
+    const input: ActionInput = {
+      ...baseInput(),
+      ketryxUrl: slowServer.url,
+      requestTimeoutSeconds: 5,
+    };
 
     const result = await uploadBuild(input, [], []);
 

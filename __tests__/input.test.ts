@@ -128,6 +128,26 @@ describe('tests input', () => {
   });
 });
 
+describe('request timeout', () => {
+  test('defaults to 35 minutes', () => {
+    const input = readActionInput();
+    expect(input.requestTimeoutSeconds).toBe(35 * 60);
+  });
+
+  test('parses an explicit value', () => {
+    setInput('request-timeout-seconds', '600');
+    const input = readActionInput();
+    expect(input.requestTimeoutSeconds).toBe(600);
+  });
+
+  test.each(['abc', '0', '-5'])('throws on invalid value %s', (value) => {
+    setInput('request-timeout-seconds', value);
+    expect(() => readActionInput()).toThrow(
+      'Invalid input request-timeout-seconds'
+    );
+  });
+});
+
 describe('check flags', () => {
   test('parses boolean check inputs', () => {
     setInput('check-dependencies-status', 'true');
